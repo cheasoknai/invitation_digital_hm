@@ -89,15 +89,6 @@ export default function ClosingSection() {
         <div className="photo-corner-accent bottom-left" aria-hidden="true" />
         <div className="photo-corner-accent bottom-right" aria-hidden="true" />
       </ScrollReveal>
-
-      {/* Final Reusable Khmer Divider */}
-      <div
-        className="khmer-divider"
-        aria-hidden="true"
-        style={{ marginTop: "1.5rem" }}
-      >
-        <span className="divider-ornament">✦ ❖ ✦</span>
-      </div>
     </footer>
   );
 }
