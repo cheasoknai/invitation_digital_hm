@@ -1,0 +1,67 @@
+/* ============================================================
+   INVITATION DIGITAL: H&M - DESIGN SYSTEM VARIABLES
+   Design Direction: Khmer Traditional Luxury
+   ============================================================ */
+
+:root {
+  /* --- EXACT ROADMAP COLOR PALETTE --- */
+  --color-bg: #e6e2d8;            /* Main background */
+  --color-gold: #b59b6d;          /* Main title / gold highlight */
+  --color-text: #6e5b3e;          /* Schedule and body text */
+  --color-burgundy: #631a26;      /* Burgundy accent / primary buttons */
+  --color-on-burgundy: #d6c29f;   /* Text on burgundy */
+  --color-frame: #d6c29f;         /* Decorative frame and borders */
+
+  /* --- EXTENDED PALETTE & TINTS --- */
+  --color-surface: rgba(230, 226, 216, 0.95);
+  --color-card-bg: rgba(255, 255, 255, 0.45);
+  --color-gold-tint: rgba(181, 155, 109, 0.15);
+  --color-burgundy-hover: #4e141e;
+
+  /* --- TYPOGRAPHY --- */
+  /* Traditional Khmer Moul Display Font (Ceremonial headings, titles, couple names) */
+  --font-khmer-moul: "KST CKS Moul", "Moul", serif;
+  /* Khmer Script Body Font */
+  --font-khmer: "Battambang", serif, system-ui;
+  /* Refined English Serif for luxury titles & numbers */
+  --font-en-serif: "Cormorant Garamond", Georgia, serif;
+  /* Clean Sans for functional UI/captions */
+  --font-en-sans: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* --- FONT WEIGHTS --- */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- LINE HEIGHTS --- */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.6;
+  --line-height-relaxed: 1.8;
+
+  /* --- SPACING TOKENS --- */
+  --space-2xs: 0.25rem;  /* 4px */
+  --space-xs: 0.5rem;    /* 8px */
+  --space-sm: 0.75rem;   /* 12px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+
+  /* --- LAYOUT TOKENS --- */
+  --max-invitation-width: 480px;
+  --border-radius-xs: 2px;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 16px;
+  --border-radius-full: 9999px;
+
+  /* --- ELEVATION & SHADOWS --- */
+  --shadow-subtle: 0 4px 20px rgba(110, 91, 62, 0.08);
+  --shadow-card: 0 10px 30px rgba(99, 26, 38, 0.08);
+  --shadow-gold: 0 4px 14px rgba(181, 155, 109, 0.25);
+
+  /* --- TRANSITIONS --- */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

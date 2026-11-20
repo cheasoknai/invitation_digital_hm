@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8D5A3" />
+      <stop offset="50%" stop-color="#B59B6D" />
+      <stop offset="100%" stop-color="#8F7242" />
+    </linearGradient>
+    <linearGradient id="burgundyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6E1D2B" />
+      <stop offset="100%" stop-color="#4E141E" />
+    </linearGradient>
+    <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Luxury Burgundy Background Shape -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#burgundyGrad)" />
+  
+  <!-- Outer Ornate Gold Border -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.9" />
+  
+  <!-- Inner Fine Gold Border -->
+  <rect x="12" y="12" width="104" height="104" rx="20" fill="none" stroke="url(#goldGrad)" stroke-width="0.75" opacity="0.6" stroke-dasharray="3,2" />
+
+  <!-- Monogram H & M -->
+  <g filter="url(#goldGlow)" text-anchor="middle" font-family="'Cormorant Garamond', 'Cinzel', Georgia, serif" font-weight="700" fill="url(#goldGrad)">
+    <text x="64" y="65" font-size="34" letter-spacing="1">H &amp; M</text>
+    <!-- Traditional Khmer Diamond / Lotus Motif -->
+    <path d="M 64 74 L 69 79 L 64 84 L 59 79 Z" fill="url(#goldGrad)" opacity="0.9" />
+    <circle cx="53" cy="79" r="1.5" fill="url(#goldGrad)" opacity="0.7" />
+    <circle cx="75" cy="79" r="1.5" fill="url(#goldGrad)" opacity="0.7" />
+  </g>
+</svg>
