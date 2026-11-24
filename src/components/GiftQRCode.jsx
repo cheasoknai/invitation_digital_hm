@@ -142,6 +142,8 @@ export default function GiftQRCode() {
                 src={giftQR.imageSrc}
                 alt="Wedding Gift QR Code"
                 className="qr-code-actual-img"
+                loading="lazy"
+                decoding="async"
                 onError={() => setImageError(true)}
               />
             </div>

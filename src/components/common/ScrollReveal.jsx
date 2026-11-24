@@ -17,13 +17,14 @@ export default function ScrollReveal({
   initial = { opacity: 0, y: 35 },
   animate = { opacity: 1, y: 0 },
   transition = { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-  threshold = 0.15,
+  threshold = 0.08,
+  rootMargin = "60px 0px 20px 0px",
   as: Component = motion.div,
   style,
   ...restProps
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const [ref, isVisible] = useScrollAnimation({ threshold });
+  const [ref, isVisible] = useScrollAnimation({ threshold, rootMargin });
 
   if (shouldReduceMotion) {
     return (

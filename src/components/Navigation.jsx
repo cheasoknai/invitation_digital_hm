@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Users, CalendarDays, MapPin, Image, Gift } from "lucide-react";
+import { Users, CalendarDays, MapPin, Image, Gift, CheckCircle2 } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "couple", labelKh: "គូស្វាមី", labelEn: "Couple", icon: Users },
   { id: "schedule", labelKh: "កម្មវិធី", labelEn: "Schedule", icon: CalendarDays },
   { id: "venue", labelKh: "ទីតាំង", labelEn: "Venue", icon: MapPin },
+  { id: "rsvp", labelKh: "ឆ្លើយតប", labelEn: "RSVP", icon: CheckCircle2 },
   { id: "gallery", labelKh: "រូបភាព", labelEn: "Gallery", icon: Image },
   { id: "gift", labelKh: "ចងដៃ", labelEn: "Gift", icon: Gift },
 ];

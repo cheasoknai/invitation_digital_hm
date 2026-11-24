@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useReducedMotion, motion } from "framer-motion";
 import { MapPin, Navigation, ExternalLink } from "lucide-react";
 import invitationData from "../data/invitation.js";
@@ -8,6 +9,7 @@ import ScrollReveal from "./common/ScrollReveal.jsx";
  * Displays wedding reception venue name, address, and interactive map directions with smooth forward-only scroll animation.
  */
 export default function VenueSection() {
+  const [mapInteractive, setMapInteractive] = useState(false);
   const { venue } = invitationData;
   const shouldReduceMotion = useReducedMotion();
 
@@ -77,9 +79,12 @@ export default function VenueSection() {
           <p className="venue-address-en font-serif">{venue.addressEnglish}</p>
         </div>
 
-        {/* Optional Responsive Map Embed */}
+        {/* Optional Responsive Map Embed with Touch-Friendly Protection */}
         {hasEmbedUrl && (
-          <div className="venue-map-embed-wrapper">
+          <div
+            className={`venue-map-embed-wrapper ${mapInteractive ? "is-interactive" : ""}`}
+            onClick={() => !mapInteractive && setMapInteractive(true)}
+          >
             <iframe
               src={venue.googleMapsEmbedUrl}
               title={`Google Map for ${venue.nameEnglish}`}
@@ -88,6 +93,24 @@ export default function VenueSection() {
               referrerPolicy="no-referrer-when-downgrade"
               allowFullScreen
             />
+            {!mapInteractive && (
+              <div
+                className="venue-map-touch-overlay"
+                role="button"
+                tabIndex={0}
+                onClick={() => setMapInteractive(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setMapInteractive(true);
+                  }
+                }}
+                aria-label="ចុចដើម្បីរំកិលផែនទី / Tap to interact with map"
+              >
+                <span className="venue-map-touch-hint font-serif">
+                  TAP TO INTERACT WITH MAP
+                </span>
+              </div>
+            )}
           </div>
         )}
 

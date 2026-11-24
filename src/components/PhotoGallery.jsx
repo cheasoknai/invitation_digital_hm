@@ -42,9 +42,10 @@ export default function PhotoGallery() {
   const { gallery } = invitationData;
   const shouldReduceMotion = useReducedMotion();
 
-  // Forward-only row scroll animation synchronizer
+  // Forward-only row scroll animation synchronizer with pre-trigger lookahead
   const { rowVisibility, registerRowElement } = useRowScrollAnimation({
-    threshold: 0.1,
+    threshold: 0.02,
+    rootMargin: "80px 0px 40px 0px",
   });
 
   // State: active photo index in lightbox (null = closed)
@@ -77,27 +78,33 @@ export default function PhotoGallery() {
   }, []);
 
   // Lightbox error handler with graceful fallback to original JPEG
-  const handleLightboxError = useCallback((photo) => {
-    if (!photo) return;
-    const { id, original, src } = photo;
+  const handleLightboxError = useCallback(
+    (photo) => {
+      if (!photo) return;
+      const { id, original, src } = photo;
 
-    // If optimized WebP failed and we haven't tried the original JPEG fallback yet
-    if (!lightboxFallbackActive[id] && original && original !== src) {
-      setLightboxFallbackActive((prev) => ({ ...prev, [id]: true }));
-    } else {
-      // Original either failed or is unavailable: show luxury placeholder in modal
-      setLightboxErrors((prev) => ({ ...prev, [id]: true }));
-    }
-  }, [lightboxFallbackActive]);
+      // If optimized WebP failed and we haven't tried the original JPEG fallback yet
+      if (!lightboxFallbackActive[id] && original && original !== src) {
+        setLightboxFallbackActive((prev) => ({ ...prev, [id]: true }));
+      } else {
+        // Original either failed or is unavailable: show luxury placeholder in modal
+        setLightboxErrors((prev) => ({ ...prev, [id]: true }));
+      }
+    },
+    [lightboxFallbackActive],
+  );
 
   // Determine current active source for lightbox
-  const getLightboxSrc = useCallback((photo) => {
-    if (!photo) return "";
-    if (lightboxFallbackActive[photo.id] && photo.original) {
-      return photo.original;
-    }
-    return photo.src;
-  }, [lightboxFallbackActive]);
+  const getLightboxSrc = useCallback(
+    (photo) => {
+      if (!photo) return "";
+      if (lightboxFallbackActive[photo.id] && photo.original) {
+        return photo.original;
+      }
+      return photo.src;
+    },
+    [lightboxFallbackActive],
+  );
 
   // Lightbox Navigation Functions
   const handleClose = useCallback(() => {
@@ -220,7 +227,9 @@ export default function PhotoGallery() {
       >
         {gallery.map((item, index) => {
           const thumbnailSrc = item.thumbnail || item.src;
-          const hasRealPhoto = Boolean(thumbnailSrc && !thumbnailErrors[item.id]);
+          const hasRealPhoto = Boolean(
+            thumbnailSrc && !thumbnailErrors[item.id],
+          );
           const rowIndex = getGalleryRowIndex(index);
           const isRowVisible = Boolean(rowVisibility[rowIndex]);
 
@@ -229,20 +238,20 @@ export default function PhotoGallery() {
               key={item.id || index}
               ref={(el) => registerRowElement(rowIndex, el)}
               className="gallery-item-card"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 30 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
               animate={
                 shouldReduceMotion
                   ? { opacity: 1, y: 0 }
                   : isRowVisible
                     ? { opacity: 1, y: 0 }
-                    : { opacity: 0, y: 30 }
+                    : { opacity: 0, y: 20 }
               }
               transition={
                 isRowVisible
                   ? {
-                      duration: 0.9,
+                      duration: 0.55,
                       delay: 0,
-                      ease: [0.16, 1, 0.3, 1],
+                      ease: [0.22, 1, 0.36, 1],
                     }
                   : { duration: 0 }
               }

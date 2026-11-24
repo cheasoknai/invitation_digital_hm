@@ -46,4 +46,10 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Local scratch and test artifacts
+scratch/
+scratch_*.md
+test_norm.py
+src/lib/testSupabase.js
+
 

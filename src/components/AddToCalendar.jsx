@@ -16,16 +16,18 @@ export default function AddToCalendar() {
 
   const { date, venue, couple } = invitationData;
 
-  // Close dropdown on click outside
+  // Close dropdown on click outside (active only when dropdown is open)
   useEffect(() => {
+    if (!isOpen) return;
+
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
+  }, [isOpen]);
 
   // Event parameters
   const eventTitle = `អាពាហ៍ពិពាហ៍ ${couple.groom.nameKhmer} & ${couple.bride.nameKhmer} (${couple.groom.nameEnglish} & ${couple.bride.nameEnglish})`;

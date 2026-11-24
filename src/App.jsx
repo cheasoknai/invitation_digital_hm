@@ -5,6 +5,7 @@ import MusicControl from "./components/MusicControl.jsx";
 import CoupleSection from "./components/CoupleSection.jsx";
 import WeddingDetails from "./components/WeddingDetails.jsx";
 import VenueSection from "./components/VenueSection.jsx";
+import RsvpSection from "./components/RsvpSection.jsx";
 import PhotoGallery from "./components/PhotoGallery.jsx";
 import GiftQRCode from "./components/GiftQRCode.jsx";
 import InvitationMessage from "./components/InvitationMessage.jsx";
@@ -14,8 +15,22 @@ import MyCredit from "./components/MyCredit.jsx";
 import FloatingPetals from "./components/FloatingPetals.jsx";
 import Navigation from "./components/Navigation.jsx";
 import ScrollReveal from "./components/common/ScrollReveal.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import GuestInvitation from "./pages/GuestInvitation.jsx";
 
-export default function App() {
+export default function App({ guest, onRsvpUpdated }) {
+  const [currentPath, setCurrentPath] = useState(() =>
+    typeof window !== "undefined" ? window.location.pathname : "/"
+  );
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const [isInvitationOpen, setIsInvitationOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(null);
@@ -33,6 +48,18 @@ export default function App() {
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, []);
+
+  // 1. Admin Route: /admin or /admin/*
+  if (!guest && (currentPath === "/admin" || currentPath.startsWith("/admin/"))) {
+    return <AdminDashboard />;
+  }
+
+  // 2. Guest Invitation Route: /invite/:slug (supports both guest slug and legacy token)
+  if (!guest && currentPath.startsWith("/invite/")) {
+    const rawSlug = currentPath.replace(/^\/invite\/?/, "").split("/")[0].split("?")[0];
+    const slug = decodeURIComponent(rawSlug);
+    return <GuestInvitation slug={slug} />;
+  }
 
   const { couple } = invitationData;
 
@@ -125,11 +152,20 @@ export default function App() {
       <Navigation isVisible={isInvitationOpen} />
 
       {/* Opening Screen and 3D Envelope Cover */}
-      <OpeningScreen isOpen={isInvitationOpen} onOpen={handleOpenInvitation} />
+      <OpeningScreen
+        isOpen={isInvitationOpen}
+        onOpen={handleOpenInvitation}
+        guest={guest}
+      />
 
       {/* Main Invitation (Revealed after opening) */}
       {isInvitationOpen && (
-        <div className="invitation-wrapper">
+        <motion.div
+          className="invitation-wrapper"
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        >
           <main className="invitation-frame">
             {/* Header Section with Forward-Only Repeatable Entrance Animation */}
             <ScrollReveal
@@ -190,6 +226,19 @@ export default function App() {
               >
                 {couple.groom.initial} &amp; {couple.bride.initial}
               </h2>
+
+              {/* Personalized Guest Welcome Badge */}
+              {guest?.guest_name && (
+                <div className="personalized-guest-welcome font-khmer">
+                  <span className="welcome-pre font-serif">CORDIALLY INVITED</span>
+                  <p className="welcome-honorific">
+                    សូមគោរពអញ្ជើញ ឯកឧត្តម លោកជំទាវ លោក លោកស្រី អ្នកនាងកញ្ញា
+                  </p>
+                  <h3 className="welcome-guest-name font-khmer-moul">
+                    {guest.guest_name}
+                  </h3>
+                </div>
+              )}
             </ScrollReveal>
 
             {/* Reusable Khmer Ornamental Divider */}
@@ -206,8 +255,11 @@ export default function App() {
             {/* Wedding Date, Live Countdown, and Ceremony Schedule */}
             <WeddingDetails />
 
-            {/* enue and Google Maps Location */}
+            {/* Venue and Google Maps Location */}
             <VenueSection />
+
+            {/* RSVP Attendance Confirmation */}
+            <RsvpSection guest={guest} onRsvpUpdated={onRsvpUpdated} />
 
             {/* Photo Gallery: Pre-Wedding Photographs */}
             <PhotoGallery />
@@ -221,15 +273,28 @@ export default function App() {
             {/* Creator Credit */}
             <MyCredit />
 
-            {/* Re-test Button */}
+            {/* View Envelope Animation Again Button */}
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary retest-envelope-btn"
               onClick={handleResetInvitation}
-              style={{ width: "100%", marginTop: "0.5rem" }}
-              aria-label="Re-close envelope to test opening animation again"
+              style={{
+                width: "100%",
+                marginTop: "1rem",
+                padding: "0.85rem 1.25rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                fontSize: "0.88rem",
+                letterSpacing: "0.5px",
+                borderRadius: "var(--border-radius-sm)"
+              }}
+              aria-label="Re-close envelope to view opening animation again"
             >
-              &larr; Re-test Opening Envelope
+              <span className="font-khmer">ទស្សនាការបើកលិខិតម្តងទៀត</span>
+              <span style={{ opacity: 0.6 }}>&bull;</span>
+              <span className="font-serif">VIEW ENVELOPE AGAIN</span>
             </button>
 
             {/* Footer Status */}
@@ -247,7 +312,7 @@ export default function App() {
               </p>
             </footer>
           </main>
-        </div>
+        </motion.div>
       )}
     </>
   );

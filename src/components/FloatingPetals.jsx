@@ -6,7 +6,7 @@ import { useReducedMotion } from "framer-motion";
  * Renders lightweight, ambient golden & rose petals gently drifting across the background.
  * Optimized with pure CSS keyframes, zero layout shifts, and respects prefers-reduced-motion.
  */
-export default function FloatingPetals({ count = 15 }) {
+export default function FloatingPetals({ count = 16 }) {
   const shouldReduceMotion = useReducedMotion();
 
   // Generate deterministic random properties for petals
@@ -19,6 +19,7 @@ export default function FloatingPetals({ count = 15 }) {
       const size = 12 + ((i * 5) % 10); // 12px to 21px
       const rotate = ((i * 37) % 360);
       const isGold = i % 2 === 0;
+      const isMobileHidden = i >= 7; // Retain 7 active petals on mobile, 16 on desktop
 
       return {
         id: i,
@@ -28,6 +29,7 @@ export default function FloatingPetals({ count = 15 }) {
         size: `${size}px`,
         rotate: `${rotate}deg`,
         isGold,
+        isMobileHidden,
       };
     });
   }, [count]);
@@ -39,16 +41,22 @@ export default function FloatingPetals({ count = 15 }) {
       {petals.map((p) => (
         <span
           key={p.id}
-          className={`petal ${p.isGold ? "petal-gold" : "petal-rose"}`}
+          className={`petal-slot ${p.isMobileHidden ? "petal-desktop-only" : ""}`}
           style={{
             left: p.left,
-            width: p.size,
-            height: p.size,
-            animationDuration: `${p.duration}, 4s`,
-            animationDelay: `${p.delay}, ${p.delay}`,
-            transform: `rotate(${p.rotate})`,
+            animationDuration: p.duration,
+            animationDelay: p.delay,
           }}
-        />
+        >
+          <span
+            className={`petal ${p.isGold ? "petal-gold" : "petal-rose"}`}
+            style={{
+              width: p.size,
+              height: p.size,
+              animationDelay: p.delay,
+            }}
+          />
+        </span>
       ))}
     </div>
   );
