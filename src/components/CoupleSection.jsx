@@ -49,7 +49,6 @@ export default function CoupleSection() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
-        <p className="section-subtitle font-serif">THE HAPPY COUPLE</p>
         <h2 className="section-title-khmer font-khmer-moul">
           គូស្វាមីភរិយាថ្មី
         </h2>
