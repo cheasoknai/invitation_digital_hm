@@ -7,6 +7,10 @@ import {
   UserPlus,
   Search,
   Copy,
+  ExternalLink,
+  Trash2,
+  Edit2,
+  Eye,
   LogOut,
   RefreshCw,
   Check,
@@ -988,7 +992,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Guest List State & Cards */}
+          {/* Guest List State & Table */}
           {loadingGuests && guests.length === 0 ? (
             <div className="admin-list-loading font-khmer">
               <Loader2 size={24} className="spinner-icon" />
@@ -1015,124 +1019,192 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <>
-              {/* Responsive Interactive Guest Cards List */}
-              <div
-                className="admin-guest-cards-list"
-                role="list"
-                aria-label="Guest Directory"
-              >
-                {paginatedGuests.map((guest) => {
-                  const isCopied = copiedId === guest.id;
-                  const isSelected = selectedGuestId === guest.id;
-                  const firstLetter = (guest.guest_name || "G")
-                    .trim()
-                    .charAt(0)
-                    .toUpperCase();
-                  const slug = guest.invitation_slug || "";
+              {/* Responsive Guest Table with Exact Header */}
+              <div className="admin-table-responsive">
+                <table className="admin-guest-table">
+                  <thead>
+                    <tr>
+                      <th className="font-serif">GUEST NAME</th>
+                      <th className="font-serif">RSVP STATUS</th>
+                      <th className="font-serif">INVITATION LINK</th>
+                      <th className="font-serif">MESSAGE / NOTE</th>
+                      <th className="font-serif">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedGuests.map((guest) => {
+                      const isCopied = copiedId === guest.id;
+                      const isSelected = selectedGuestId === guest.id;
+                      const origin =
+                        typeof window !== "undefined"
+                          ? window.location.origin
+                          : "";
+                      const slug = guest.invitation_slug || "";
+                      const inviteUrl = slug
+                        ? `${origin}/invite/${encodeURIComponent(slug)}`
+                        : "";
+                      const firstLetter = (guest.guest_name || "G")
+                        .trim()
+                        .charAt(0)
+                        .toUpperCase();
 
-                  return (
-                    <div
-                      key={guest.id}
-                      className={`admin-guest-item-card ${isSelected ? "is-active-selection" : ""}`}
-                      onClick={() => setSelectedGuestId(guest.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelectedGuestId(guest.id);
-                        }
-                      }}
-                      aria-label={`View details for ${guest.guest_name}`}
-                    >
-                      {/* Left: Avatar & Identity Details */}
-                      <div className="guest-item-main">
-                        <div className="guest-avatar-circle font-khmer">
-                          {firstLetter}
-                        </div>
+                      return (
+                        <tr
+                          key={guest.id}
+                          className={`admin-guest-row ${isSelected ? "is-selected-row" : ""}`}
+                          onClick={() => setSelectedGuestId(guest.id)}
+                        >
+                          {/* 1. GUEST NAME */}
+                          <td className="guest-name-cell">
+                            <div className="guest-name-wrapper">
+                              <div className="guest-avatar-circle font-khmer">
+                                {firstLetter}
+                              </div>
+                              <div className="guest-name-details">
+                                <span className="guest-name-text font-khmer">
+                                  {guest.guest_name}
+                                </span>
+                                {guest.created_at && (
+                                  <span className="guest-time-text font-serif">
+                                    <Calendar size={11} style={{ display: "inline", marginRight: "3px" }} />
+                                    {new Date(
+                                      guest.created_at,
+                                    ).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
 
-                        <div className="guest-item-info">
-                          <div className="guest-item-name-row">
-                            <span className="guest-item-name font-khmer">
-                              {guest.guest_name}
+                          {/* 2. RSVP STATUS */}
+                          <td className="guest-status-cell">
+                            <span
+                              className={`status-pill status-${guest.rsvp_status} font-serif`}
+                            >
+                              {guest.rsvp_status === "accepted" && (
+                                <CheckCircle2 size={13} />
+                              )}
+                              {guest.rsvp_status === "declined" && (
+                                <XCircle size={13} />
+                              )}
+                              {guest.rsvp_status === "pending" && (
+                                <Clock size={13} />
+                              )}
+                              <span>{guest.rsvp_status.toUpperCase()}</span>
                             </span>
-                          </div>
+                          </td>
 
-                          <div className="guest-item-meta-row">
-                            <span className="guest-item-slug">
-                              <span className="slug-prefix">/invite/</span>
-                              <span className="slug-value">
-                                {slug || "(no slug)"}
+                          {/* 3. INVITATION LINK */}
+                          <td className="guest-link-cell">
+                            <div
+                              className="guest-link-box"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span className="guest-slug-badge">
+                                <span className="slug-prefix">/invite/</span>
+                                <strong className="slug-value">
+                                  {slug || "(no slug set)"}
+                                </strong>
                               </span>
-                            </span>
+                              <button
+                                type="button"
+                                className={`copy-link-btn ${isCopied ? "is-copied" : ""}`}
+                                onClick={() => handleCopyLink(guest)}
+                                disabled={!slug}
+                                title={
+                                  slug
+                                    ? "Copy personalized invitation link"
+                                    : "Guest has no invitation slug"
+                                }
+                                aria-label="Copy invitation link"
+                              >
+                                {isCopied ? (
+                                  <>
+                                    <Check size={13} />
+                                    <span>COPIED!</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={13} />
+                                    <span>COPY</span>
+                                  </>
+                                )}
+                              </button>
 
-                            {guest.created_at && (
-                              <span className="guest-item-date font-serif">
-                                <Calendar size={11} />
-                                {new Date(
-                                  guest.created_at,
-                                ).toLocaleDateString()}
+                              {inviteUrl && (
+                                <a
+                                  href={inviteUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="open-link-icon-btn"
+                                  title="Open personalized invitation in new tab"
+                                  aria-label="Open personalized invitation in new tab"
+                                >
+                                  <ExternalLink size={14} />
+                                </a>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* 4. MESSAGE / NOTE */}
+                          <td className="guest-message-cell font-khmer">
+                            {guest.rsvp_message ? (
+                              <span
+                                className="guest-msg-text"
+                                title={guest.rsvp_message}
+                              >
+                                &ldquo;{guest.rsvp_message}&rdquo;
                               </span>
+                            ) : (
+                              <span className="no-message-text">&mdash;</span>
                             )}
-                          </div>
-                        </div>
-                      </div>
+                          </td>
 
-                      {/* Right: RSVP Status Pill, Quick Copy, and Chevron Indicator */}
-                      <div className="guest-item-controls">
-                        <span
-                          className={`status-pill status-${guest.rsvp_status} font-serif`}
-                        >
-                          {guest.rsvp_status === "accepted" && (
-                            <CheckCircle2 size={12} />
-                          )}
-                          {guest.rsvp_status === "declined" && (
-                            <XCircle size={12} />
-                          )}
-                          {guest.rsvp_status === "pending" && (
-                            <Clock size={12} />
-                          )}
-                          <span>{guest.rsvp_status.toUpperCase()}</span>
-                        </span>
-
-                        <button
-                          type="button"
-                          className={`guest-item-copy-btn ${isCopied ? "is-copied" : ""}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyLink(guest);
-                          }}
-                          disabled={!slug}
-                          title={
-                            slug
-                              ? "Copy personalized invitation link"
-                              : "No slug configured"
-                          }
-                          aria-label="Copy invitation link"
-                        >
-                          {isCopied ? (
-                            <>
-                              <Check size={12} />
-                              <span className="copy-btn-text">COPIED</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy size={12} />
-                              <span className="copy-btn-text">COPY</span>
-                            </>
-                          )}
-                        </button>
-
-                        <div
-                          className="guest-item-chevron-icon"
-                          aria-hidden="true"
-                        >
-                          <ChevronRight size={18} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                          {/* 5. ACTIONS */}
+                          <td
+                            className="guest-actions-cell"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="table-actions-wrap">
+                              <button
+                                type="button"
+                                className="action-icon-btn view-btn"
+                                onClick={() => setSelectedGuestId(guest.id)}
+                                title="View Guest Details"
+                                aria-label="View Guest Details"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="action-icon-btn edit-btn"
+                                onClick={() => setSelectedGuestId(guest.id)}
+                                title="Edit Guest"
+                                aria-label="Edit Guest"
+                              >
+                                <Edit2 size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="action-icon-btn delete-btn"
+                                onClick={() => handleDeleteGuest(guest)}
+                                disabled={deletingId === guest.id}
+                                title="Delete Guest"
+                                aria-label="Delete Guest"
+                              >
+                                {deletingId === guest.id ? (
+                                  <Loader2 size={15} className="spinner-icon" />
+                                ) : (
+                                  <Trash2 size={15} />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
               {/* Responsive Pagination Controls */}
