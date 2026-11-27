@@ -73,7 +73,8 @@ export default function Navigation({ isVisible }) {
               className={`nav-pill-btn ${isActive ? "is-active" : ""}`}
               onClick={() => handleNavClick(item.id)}
               aria-current={isActive ? "true" : undefined}
-              aria-label={`Scroll to ${item.labelEn}`}
+              aria-label={`${item.labelKh} - ${item.labelEn}`}
+              title={item.labelKh}
             >
               {/* Animated active gold pill indicator */}
               {isActive && (
@@ -85,8 +86,7 @@ export default function Navigation({ isVisible }) {
               )}
 
               <span className="nav-pill-content">
-                <Icon size={16} className="nav-icon" aria-hidden="true" />
-                <span className="nav-label font-khmer">{item.labelKh}</span>
+                <Icon size={18} className="nav-icon" aria-hidden="true" />
               </span>
             </button>
           );
