@@ -14,11 +14,11 @@ import { useScrollAnimation } from "../../hooks/useScrollAnimation.js";
 export default function ScrollReveal({
   children,
   className = "",
-  initial = { opacity: 0, y: 35 },
+  initial = { opacity: 0, y: 40 },
   animate = { opacity: 1, y: 0 },
-  transition = { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-  threshold = 0.08,
-  rootMargin = "60px 0px 20px 0px",
+  transition = { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
+  threshold = 0.12,
+  rootMargin = "0px 0px -40px 0px",
   as: Component = motion.div,
   style,
   ...restProps

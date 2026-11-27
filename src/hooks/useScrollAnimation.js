@@ -13,11 +13,11 @@ import { useReducedMotion } from "framer-motion";
  * 4. Respects prefers-reduced-motion accessibility.
  *
  * @param {Object} options
- * @param {number} [options.threshold=0.08] - Viewport entry threshold (0 to 1)
- * @param {string} [options.rootMargin="60px 0px 20px 0px"]
+ * @param {number} [options.threshold=0.12] - Viewport entry threshold (0 to 1)
+ * @param {string} [options.rootMargin="0px 0px -40px 0px"]
  * @returns {[React.RefObject, boolean]} [ref, isVisible]
  */
-export function useScrollAnimation({ threshold = 0.08, rootMargin = "60px 0px 20px 0px" } = {}) {
+export function useScrollAnimation({ threshold = 0.12, rootMargin = "0px 0px -40px 0px" } = {}) {
   const shouldReduceMotion = useReducedMotion();
   const ref = useRef(null);
   const [isVisible, setIsVisible] = useState(Boolean(shouldReduceMotion));
@@ -78,8 +78,8 @@ export function useScrollAnimation({ threshold = 0.08, rootMargin = "60px 0px 20
  * Uses a single shared IntersectionObserver to prevent observer explosion and main-thread delays on mobile.
  */
 export function useRowScrollAnimation({
-  threshold = 0.02,
-  rootMargin = "80px 0px 40px 0px",
+  threshold = 0.08,
+  rootMargin = "0px 0px -30px 0px",
 } = {}) {
   const shouldReduceMotion = useReducedMotion();
   const [rowVisibility, setRowVisibility] = useState({});
