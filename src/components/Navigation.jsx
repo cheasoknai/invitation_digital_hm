@@ -107,7 +107,7 @@ export default function Navigation({ isVisible }) {
     // Unlock after smooth scroll completes
     scrollTimeoutRef.current = setTimeout(() => {
       isManualScrolling.current = false;
-    }, 950);
+    }, 1200);
   };
 
   if (!isVisible) return null;
@@ -139,7 +139,8 @@ export default function Navigation({ isVisible }) {
               )}
 
               <span className="nav-pill-content">
-                <Icon size={18} className="nav-icon" aria-hidden="true" />
+                <Icon size={16} className="nav-icon" aria-hidden="true" />
+                <span className="nav-label font-khmer">{item.labelKh}</span>
               </span>
             </button>
           );

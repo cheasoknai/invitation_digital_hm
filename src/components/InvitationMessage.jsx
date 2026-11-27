@@ -30,12 +30,6 @@ export default function InvitationMessage() {
         <h2 className="section-title-khmer font-khmer-moul">
           {message.invitationTitleKhmer || "យើងខ្ញុំមានកិត្តិយសសូមគោរពអញ្ជើញ"}
         </h2>
-        <p
-          className="section-subtitle font-serif"
-          style={{ letterSpacing: "2px" }}
-        >
-          {message.invitationTitleEnglish || "WEDDING INVITATION"}
-        </p>
       </ScrollReveal>
 
       {/* Reusable Khmer Divider */}

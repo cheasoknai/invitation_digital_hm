@@ -37,12 +37,6 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
           <h2 className="section-title-khmer font-khmer-moul">
             ការឆ្លើយតបការអញ្ជើញ
           </h2>
-          <p
-            className="section-subtitle font-serif"
-            style={{ letterSpacing: "2px" }}
-          >
-            WEDDING ATTENDANCE
-          </p>
         </ScrollReveal>
 
         <div className="khmer-divider" aria-hidden="true">
@@ -151,12 +145,6 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
         <h2 className="section-title-khmer font-khmer-moul">
           ការឆ្លើយតបការអញ្ជើញ
         </h2>
-        <p
-          className="section-subtitle font-serif"
-          style={{ letterSpacing: "2px" }}
-        >
-          WILL YOU ATTEND?
-        </p>
       </ScrollReveal>
 
       <div className="khmer-divider" aria-hidden="true">

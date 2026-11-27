@@ -10,17 +10,15 @@ import {
   ExternalLink,
   Trash2,
   Edit2,
-  Eye,
   LogOut,
   RefreshCw,
   Check,
   Globe,
   Loader2,
   Link2,
-  ChevronRight,
-  ChevronLeft,
-  Calendar,
   X,
+  ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import {
@@ -32,7 +30,6 @@ import {
 } from "../lib/guestService.js";
 import AdminLogin from "./AdminLogin.jsx";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal.jsx";
-import GuestDetailDrawer from "../components/GuestDetailDrawer.jsx";
 
 /**
  * AdminDashboard Component
@@ -42,11 +39,6 @@ import GuestDetailDrawer from "../components/GuestDetailDrawer.jsx";
  * Supports custom invitation slugs with automatic normalization & duplicate validation.
  * Full CRUD operations persist directly to Supabase public.guests PostgreSQL table
  * under Row Level Security (RLS) with the 'authenticated' role.
- *
- * Responsive Redesign:
- * - Replaces rigid table with interactive, touch-friendly guest cards.
- * - Dedicated slide-over detail drawer on desktop, responsive bottom-sheet on mobile.
- * - Seamless search, filtering, and responsive pagination.
  */
 export default function AdminDashboard() {
   const [session, setSession] = useState(null);
@@ -66,14 +58,10 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
-
-  // Selected guest ID for Dedicated Detail Drawer (null when closed)
-  const [selectedGuestId, setSelectedGuestId] = useState(null);
-
-  // Inline editing state for detail drawer / quick edits
+  // Inline editing state: guest ID string or null
+  const [editingGuest, setEditingGuest] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Copied link feedback: guestId string or null
@@ -84,30 +72,24 @@ export default function AdminDashboard() {
   // Selected guest for custom Delete Confirmation Dialog (null when closed)
   const [guestToDelete, setGuestToDelete] = useState(null);
 
-  // Derive the active selected guest object from guests state
-  const selectedGuest = guests.find((g) => g.id === selectedGuestId) || null;
+  // Selected guest for Mobile Bottom Sheet / Detail View (null when closed)
+  const [selectedMobileGuest, setSelectedMobileGuest] = useState(null);
 
-  // Reset pagination to page 1 whenever search query or status filter changes
-  const [prevFilters, setPrevFilters] = useState({ searchQuery, statusFilter });
-  if (prevFilters.searchQuery !== searchQuery || prevFilters.statusFilter !== statusFilter) {
-    setPrevFilters({ searchQuery, statusFilter });
-    setCurrentPage(1);
-  }
-
-  // Close modals/drawers on Escape key press with proper hierarchy
+  // Close modals on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
         if (guestToDelete && !deletingId) {
           setGuestToDelete(null);
-        } else if (selectedGuestId) {
-          setSelectedGuestId(null);
+        } else if (selectedMobileGuest && !isSavingEdit) {
+          setSelectedMobileGuest(null);
+          setEditingGuest(null);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [guestToDelete, deletingId, selectedGuestId]);
+  }, [guestToDelete, deletingId, selectedMobileGuest, isSavingEdit]);
 
   // 1. Manage Auth Session (Supabase Auth as single source of truth)
   useEffect(() => {
@@ -173,6 +155,7 @@ export default function AdminDashboard() {
     setErrorMsg("");
 
     try {
+      // Verify active session before querying
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
@@ -211,7 +194,9 @@ export default function AdminDashboard() {
 
     let isMounted = true;
 
+    // A. Initial data load
     const loadInitialGuests = async () => {
+      // Async boundary prevents synchronous setState cascade
       await Promise.resolve();
       if (!isMounted) return;
 
@@ -247,10 +232,13 @@ export default function AdminDashboard() {
 
     loadInitialGuests();
 
+    // B. Set up Supabase Realtime channel for live cross-device synchronization
+    // Generates a unique channel ID per mount to avoid React 19 StrictMode topic collisions
     const channelId = `admin-guests-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     let channel = null;
 
     const setupRealtime = async () => {
+      // Ensure WebSocket connection is authenticated with user's JWT so RLS allows receiving events
       if (session?.access_token) {
         try {
           await supabase.realtime.setAuth(session.access_token);
@@ -274,14 +262,20 @@ export default function AdminDashboard() {
             if (!isMounted) return;
 
             const { eventType, new: newRecord, old: oldRecord } = payload;
+            console.log(
+              `[Realtime] ${eventType} event received:`,
+              newRecord || oldRecord,
+            );
 
             if (eventType === "INSERT" && newRecord?.id) {
               setGuests((prev) => {
+                // Deduplicate: if guest with this ID already exists, update in-place with latest db state
                 if (prev.some((g) => g.id === newRecord.id)) {
                   return prev.map((g) =>
                     g.id === newRecord.id ? { ...g, ...newRecord } : g,
                   );
                 }
+                // Prepend newly inserted guest so it appears immediately at top of list
                 return [newRecord, ...prev];
               });
             } else if (eventType === "UPDATE" && newRecord?.id) {
@@ -292,15 +286,12 @@ export default function AdminDashboard() {
               );
             } else if (eventType === "DELETE" && oldRecord?.id) {
               setGuests((prev) => prev.filter((g) => g.id !== oldRecord.id));
-              // If deleted guest was currently selected in drawer, close drawer cleanly
-              setSelectedGuestId((prevId) =>
-                prevId === oldRecord.id ? null : prevId,
-              );
             }
           },
         )
         .subscribe((status, err) => {
           if (!isMounted) return;
+          console.log(`[Realtime] Subscription status [${channelId}]:`, status);
           if (status === "SUBSCRIBED") {
             setRealtimeStatus("connected");
           } else if (status === "CHANNEL_ERROR") {
@@ -316,6 +307,7 @@ export default function AdminDashboard() {
 
     setupRealtime();
 
+    // C. Reconcile on focus, reconnect, or tab visibility change
     const handleReconnection = async () => {
       if (document.visibilityState === "visible" || navigator.onLine) {
         try {
@@ -336,12 +328,14 @@ export default function AdminDashboard() {
     window.addEventListener("focus", handleReconnection);
     document.addEventListener("visibilitychange", handleReconnection);
 
+    // D. Periodic fallback heartbeat sync (every 10 seconds while tab is active)
     const syncInterval = setInterval(() => {
       if (document.visibilityState === "visible") {
         handleReconnection();
       }
     }, 10000);
 
+    // E. Cleanup on unmount or session change
     return () => {
       isMounted = false;
       clearInterval(syncInterval);
@@ -373,9 +367,14 @@ export default function AdminDashboard() {
         ? normalizeSlug(newGuestSlug, { stripEdges: true })
         : "";
 
+      // Determine slug: if custom slug is provided, validate uniqueness
       let candidateSlug = cleanCustomSlug;
       if (cleanCustomSlug) {
-        const uniqueness = await checkSlugIsUnique(cleanCustomSlug, null, guests);
+        const uniqueness = await checkSlugIsUnique(
+          cleanCustomSlug,
+          null,
+          guests,
+        );
         if (!uniqueness.isUnique) {
           setErrorMsg(
             uniqueness.error ||
@@ -384,15 +383,18 @@ export default function AdminDashboard() {
           return;
         }
       } else {
+        // If left empty, fallback to automatic slug generated from guest name
         candidateSlug = generateGuestSlug(newGuestName.trim(), guests);
       }
 
+      // Call insertGuest service which executes await supabase.from("guests").insert(...)
       const { data, error } = await insertGuest({
         guestName: newGuestName.trim(),
         token,
         slug: candidateSlug,
       });
 
+      // Check error: if insert failed, display error and NEVER add to React state
       if (error) {
         console.error("Supabase INSERT error:", error);
         if (error.code === "23505") {
@@ -408,6 +410,7 @@ export default function AdminDashboard() {
         return;
       }
 
+      // Database confirmed! Only now update React state
       if (data) {
         setGuests((prev) => {
           if (prev.some((g) => g.id === data.id)) {
@@ -417,12 +420,12 @@ export default function AdminDashboard() {
         });
         setNewGuestName("");
         setNewGuestSlug("");
-        // Automatically select the newly created guest to open drawer immediately
-        setSelectedGuestId(data.id);
       }
     } catch (err) {
       console.error("Exception in handleAddGuest:", err);
-      setErrorMsg(err.message || "An unexpected error occurred while adding guest.");
+      setErrorMsg(
+        err.message || "An unexpected error occurred while adding guest.",
+      );
     } finally {
       setIsAdding(false);
     }
@@ -459,10 +462,8 @@ export default function AdminDashboard() {
         return;
       }
 
+      // Only update state after database confirms deletion
       setGuests((prev) => prev.filter((g) => g.id !== guestToDelete.id));
-      if (selectedGuestId === guestToDelete.id) {
-        setSelectedGuestId(null);
-      }
       setGuestToDelete(null);
     } catch (err) {
       console.error("Exception in handleConfirmDelete:", err);
@@ -472,17 +473,24 @@ export default function AdminDashboard() {
     }
   };
 
-  // 6. Save Edit: supports editing guest name and custom slug
-  const handleSaveEdit = async (guestId, editName, editSlug) => {
-    if (!editName.trim()) return false;
+  // 6. Edit Guest: supports editing both Guest Name and Custom Slug
+  const handleStartEdit = (guest) => {
+    setEditingGuest(guest.id);
+    setEditName(guest.guest_name || "");
+    setEditSlug(guest.invitation_slug || "");
+    setErrorMsg("");
+  };
+
+  const handleSaveEdit = async (guestId) => {
+    if (!editName.trim()) return;
 
     if (!session?.access_token) {
       setErrorMsg("Your session has expired. Please sign in again.");
-      return false;
+      return;
     }
 
     const currentGuest = guests.find((g) => g.id === guestId);
-    if (!currentGuest) return false;
+    if (!currentGuest) return;
 
     setIsSavingEdit(true);
     setErrorMsg("");
@@ -493,6 +501,8 @@ export default function AdminDashboard() {
         ? normalizeSlug(editSlug, { stripEdges: true })
         : "";
 
+      // Determine final slug:
+      // If Admin entered a slug, validate uniqueness unless unchanged
       let finalSlug = currentGuest.invitation_slug || "";
       if (cleanCustomSlug) {
         if (cleanCustomSlug !== (currentGuest.invitation_slug || "")) {
@@ -506,17 +516,18 @@ export default function AdminDashboard() {
               uniqueness.error ||
                 `The slug "${cleanCustomSlug}" is already in use.`,
             );
-            return false;
+            return;
           }
         }
         finalSlug = cleanCustomSlug;
       } else if (!currentGuest.invitation_slug) {
+        // If guest has no slug yet and field is left empty, generate automatic slug
         finalSlug = generateGuestSlug(trimmedName, guests, guestId);
       }
 
       if (!finalSlug) {
         setErrorMsg("A valid invitation slug is required.");
-        return false;
+        return;
       }
 
       const updatePayload = {
@@ -541,9 +552,10 @@ export default function AdminDashboard() {
         } else {
           setErrorMsg(error.message || "Failed to update guest in database.");
         }
-        return false;
+        return;
       }
 
+      // Database confirmed! Only now update state
       setGuests((prev) =>
         prev.map((g) =>
           g.id === guestId
@@ -557,17 +569,29 @@ export default function AdminDashboard() {
         ),
       );
 
-      return true;
+      setSelectedMobileGuest((prev) =>
+        prev && prev.id === guestId
+          ? {
+              ...prev,
+              ...(data || {}),
+              guest_name: trimmedName,
+              invitation_slug: finalSlug,
+            }
+          : prev,
+      );
+
+      setEditingGuest(null);
+      setEditName("");
+      setEditSlug("");
     } catch (err) {
       console.error("Exception in handleSaveEdit:", err);
       setErrorMsg(err.message || "Failed to update guest in database.");
-      return false;
     } finally {
       setIsSavingEdit(false);
     }
   };
 
-  // 7. Copy personalized invite link
+  // 7. Copy personalized invite link using stored guest invitation_slug
   const handleCopyLink = async (guest) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const slug = guest.invitation_slug;
@@ -596,7 +620,6 @@ export default function AdminDashboard() {
     }
     setSession(null);
     setGuests([]);
-    setSelectedGuestId(null);
   };
 
   // Loading Screen while verifying session
@@ -645,15 +668,6 @@ export default function AdminDashboard() {
 
     return matchesSearch && matchesStatus;
   });
-
-  // Calculate pagination slices
-  const totalPages = Math.max(1, Math.ceil(filteredGuests.length / itemsPerPage));
-  const validCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (validCurrentPage - 1) * itemsPerPage;
-  const paginatedGuests = filteredGuests.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
 
   return (
     <div className="admin-dashboard-container">
@@ -881,9 +895,29 @@ export default function AdminDashboard() {
 
           {/* Real-time slug preview hint */}
           {newGuestName.trim() && (
-            <div className="admin-slug-preview-row">
+            <div
+              style={{
+                marginTop: "10px",
+                fontSize: "0.82rem",
+                color: "#6b7280",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                flexWrap: "wrap",
+              }}
+            >
               <span className="font-serif">Generated URL Preview:</span>
-              <code className="hint-slug-code">
+              <code
+                className="hint-slug-code"
+                style={{
+                  color: "var(--color-burgundy)",
+                  fontWeight: 700,
+                  background: "#fbf9f5",
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  border: "1px solid rgba(181, 155, 109, 0.3)",
+                }}
+              >
                 /invite/
                 {newGuestSlug
                   ? normalizeSlug(newGuestSlug, { stripEdges: true })
@@ -913,9 +947,9 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Guest Management Section: Responsive Interactive List */}
-        <section className="admin-directory-section">
-          {/* Directory Toolbar: Search, Filters, Refresh */}
+        {/* Guest Management Table Section */}
+        <section className="admin-table-section">
+          {/* Table Toolbar: Search, Filters, Refresh */}
           <div className="admin-table-toolbar">
             <div className="toolbar-search-wrap">
               <Search
@@ -930,16 +964,6 @@ export default function AdminDashboard() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              {searchQuery && (
-                <button
-                  type="button"
-                  className="search-clear-btn"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="Clear search query"
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
 
             <div className="toolbar-controls">
@@ -981,8 +1005,7 @@ export default function AdminDashboard() {
                 className="toolbar-refresh-btn font-serif"
                 onClick={fetchGuests}
                 disabled={loadingGuests}
-                title="Refresh guest list"
-                aria-label="Refresh guest list"
+                title="Refresh list"
               >
                 <RefreshCw
                   size={15}
@@ -992,49 +1015,64 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Guest List State & Table */}
-          {loadingGuests && guests.length === 0 ? (
-            <div className="admin-list-loading font-khmer">
-              <Loader2 size={24} className="spinner-icon" />
-              <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
-            </div>
-          ) : filteredGuests.length === 0 ? (
-            <div className="admin-empty-state-card font-khmer">
-              <div className="empty-state-icon-wrap">
-                <Users size={32} />
-              </div>
-              <h3 className="empty-state-title">
-                រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
-              </h3>
-              <p className="empty-state-sub-khmer">
-                {searchQuery || statusFilter !== "all"
-                  ? "គ្មានភ្ញៀវដែលត្រូវគ្នានឹងការស្វែងរករបស់អ្នកទេ។ សូមសាកល្បងស្វែងរកម្តងទៀត។"
-                  : "សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់ខាងលើ ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។"}
-              </p>
-              <span className="empty-state-sub-en font-serif">
-                {searchQuery || statusFilter !== "all"
-                  ? "No matching guests found. Try adjusting your search query or filter."
-                  : "No guests registered yet. Use the Add Guest form above to begin."}
-              </span>
-            </div>
-          ) : (
-            <>
-              {/* Responsive Guest Table with Exact Header */}
-              <div className="admin-table-responsive">
-                <table className="admin-guest-table">
-                  <thead>
+          {/* Desktop/Tablet View (768px and above): PRESERVED Table Layout */}
+          <div className="admin-desktop-view">
+            <div className="admin-table-responsive">
+              <table className="admin-guest-table">
+                <thead>
+                  <tr>
+                    <th className="font-serif">GUEST NAME</th>
+                    <th className="font-serif">RSVP STATUS</th>
+                    <th className="font-serif">INVITATION LINK</th>
+                    <th className="font-serif">MESSAGE / NOTE</th>
+                    <th className="font-serif">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingGuests && guests.length === 0 ? (
                     <tr>
-                      <th className="font-serif">GUEST NAME</th>
-                      <th className="font-serif">RSVP STATUS</th>
-                      <th className="font-serif">INVITATION LINK</th>
-                      <th className="font-serif">MESSAGE / NOTE</th>
-                      <th className="font-serif">ACTIONS</th>
+                      <td colSpan={5} className="admin-table-loading font-khmer">
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                            padding: "2rem",
+                          }}
+                        >
+                          <Loader2 size={24} className="spinner-icon" />
+                          <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedGuests.map((guest) => {
+                  ) : filteredGuests.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="admin-empty-state-cell">
+                        <div className="admin-empty-state-card font-khmer">
+                          <div className="empty-state-icon-wrap">
+                            <Users size={32} />
+                          </div>
+                          <h3 className="empty-state-title">
+                            រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
+                          </h3>
+                          <p className="empty-state-sub-khmer">
+                            សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់
+                            &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ
+                            ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
+                          </p>
+                          <span className="empty-state-sub-en font-serif">
+                            No guests found. Use the &ldquo;ADD GUEST&rdquo; form
+                            above to add a guest and generate their personalized
+                            link.
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredGuests.map((guest) => {
+                      const isEditing = editingGuest === guest.id;
                       const isCopied = copiedId === guest.id;
-                      const isSelected = selectedGuestId === guest.id;
                       const origin =
                         typeof window !== "undefined"
                           ? window.location.origin
@@ -1049,34 +1087,95 @@ export default function AdminDashboard() {
                         .toUpperCase();
 
                       return (
-                        <tr
-                          key={guest.id}
-                          className={`admin-guest-row ${isSelected ? "is-selected-row" : ""}`}
-                          onClick={() => setSelectedGuestId(guest.id)}
-                        >
-                          {/* 1. GUEST NAME */}
+                        <tr key={guest.id} className="admin-guest-row">
+                          {/* Guest Name Column */}
                           <td className="guest-name-cell">
-                            <div className="guest-name-wrapper">
-                              <div className="guest-avatar-circle font-khmer">
-                                {firstLetter}
+                            {isEditing ? (
+                              <div className="inline-edit-wrap">
+                                <div className="inline-edit-field">
+                                  <label className="inline-edit-label font-khmer">
+                                    ឈ្មោះភ្ញៀវ / Guest Name:
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="inline-edit-input font-khmer"
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    autoFocus
+                                    disabled={isSavingEdit}
+                                    maxLength={150}
+                                  />
+                                </div>
+
+                                <div className="inline-edit-field">
+                                  <label className="inline-edit-label font-serif">
+                                    Custom Slug:
+                                  </label>
+                                  <div className="inline-slug-box">
+                                    <span className="inline-slug-prefix font-sans">
+                                      /invite/
+                                    </span>
+                                    <input
+                                      type="text"
+                                      className="inline-edit-slug-input font-sans"
+                                      placeholder="custom-slug"
+                                      value={editSlug}
+                                      onChange={(e) =>
+                                        setEditSlug(normalizeSlug(e.target.value))
+                                      }
+                                      disabled={isSavingEdit}
+                                      maxLength={60}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="inline-edit-actions">
+                                  <button
+                                    type="button"
+                                    className="inline-save-btn font-serif"
+                                    onClick={() => handleSaveEdit(guest.id)}
+                                    disabled={isSavingEdit || !editName.trim()}
+                                    title="Save changes"
+                                  >
+                                    {isSavingEdit ? "SAVING..." : "SAVE"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inline-cancel-btn font-serif"
+                                    onClick={() => {
+                                      setEditingGuest(null);
+                                      setEditName("");
+                                      setEditSlug("");
+                                    }}
+                                    disabled={isSavingEdit}
+                                    title="Cancel edit"
+                                  >
+                                    CANCEL
+                                  </button>
+                                </div>
                               </div>
-                              <div className="guest-name-details">
-                                <span className="guest-name-text font-khmer">
-                                  {guest.guest_name}
-                                </span>
-                                {guest.created_at && (
-                                  <span className="guest-time-text font-serif">
-                                    <Calendar size={11} style={{ display: "inline", marginRight: "3px" }} />
-                                    {new Date(
-                                      guest.created_at,
-                                    ).toLocaleDateString()}
+                            ) : (
+                              <div className="guest-name-wrapper">
+                                <div className="guest-avatar-circle font-khmer">
+                                  {firstLetter}
+                                </div>
+                                <div className="guest-name-details">
+                                  <span className="guest-name-text font-khmer">
+                                    {guest.guest_name}
                                   </span>
-                                )}
+                                  {guest.created_at && (
+                                    <span className="guest-time-text font-serif">
+                                      {new Date(
+                                        guest.created_at,
+                                      ).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </td>
 
-                          {/* 2. RSVP STATUS */}
+                          {/* RSVP Status Column */}
                           <td className="guest-status-cell">
                             <span
                               className={`status-pill status-${guest.rsvp_status} font-serif`}
@@ -1094,12 +1193,9 @@ export default function AdminDashboard() {
                             </span>
                           </td>
 
-                          {/* 3. INVITATION LINK */}
+                          {/* Invitation Link Column */}
                           <td className="guest-link-cell">
-                            <div
-                              className="guest-link-box"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className="guest-link-box">
                               <span className="guest-slug-badge">
                                 <span className="slug-prefix">/invite/</span>
                                 <strong className="slug-value">
@@ -1116,7 +1212,6 @@ export default function AdminDashboard() {
                                     ? "Copy personalized invitation link"
                                     : "Guest has no invitation slug"
                                 }
-                                aria-label="Copy invitation link"
                               >
                                 {isCopied ? (
                                   <>
@@ -1137,8 +1232,7 @@ export default function AdminDashboard() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="open-link-icon-btn"
-                                  title="Open personalized invitation in new tab"
-                                  aria-label="Open personalized invitation in new tab"
+                                  title="Open personalized invitation"
                                 >
                                   <ExternalLink size={14} />
                                 </a>
@@ -1146,7 +1240,7 @@ export default function AdminDashboard() {
                             </div>
                           </td>
 
-                          {/* 4. MESSAGE / NOTE */}
+                          {/* Message Column */}
                           <td className="guest-message-cell font-khmer">
                             {guest.rsvp_message ? (
                               <span
@@ -1160,135 +1254,469 @@ export default function AdminDashboard() {
                             )}
                           </td>
 
-                          {/* 5. ACTIONS */}
-                          <td
-                            className="guest-actions-cell"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="table-actions-wrap">
-                              <button
-                                type="button"
-                                className="action-icon-btn view-btn"
-                                onClick={() => setSelectedGuestId(guest.id)}
-                                title="View Guest Details"
-                                aria-label="View Guest Details"
-                              >
-                                <Eye size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="action-icon-btn edit-btn"
-                                onClick={() => setSelectedGuestId(guest.id)}
-                                title="Edit Guest"
-                                aria-label="Edit Guest"
-                              >
-                                <Edit2 size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="action-icon-btn delete-btn"
-                                onClick={() => handleDeleteGuest(guest)}
-                                disabled={deletingId === guest.id}
-                                title="Delete Guest"
-                                aria-label="Delete Guest"
-                              >
-                                {deletingId === guest.id ? (
-                                  <Loader2 size={15} className="spinner-icon" />
-                                ) : (
-                                  <Trash2 size={15} />
-                                )}
-                              </button>
-                            </div>
+                          {/* Actions Column */}
+                          <td className="guest-actions-cell">
+                            <button
+                              type="button"
+                              className="action-icon-btn edit-btn"
+                              onClick={() => handleStartEdit(guest)}
+                              title="Edit Guest Name"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <span> | </span>
+                            <button
+                              type="button"
+                              className="action-icon-btn delete-btn"
+                              onClick={() => handleDeleteGuest(guest)}
+                              disabled={deletingId === guest.id}
+                              title="Delete Guest"
+                            >
+                              {deletingId === guest.id ? (
+                                <Loader2 size={15} className="spinner-icon" />
+                              ) : (
+                                <Trash2 size={15} />
+                              )}
+                            </button>
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile View (up to 767px): Touch-Optimized Guest Cards */}
+          <div className="admin-mobile-view">
+            {loadingGuests && guests.length === 0 ? (
+              <div className="admin-mobile-loading font-khmer">
+                <Loader2 size={24} className="spinner-icon" />
+                <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
               </div>
-
-              {/* Responsive Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="admin-pagination-bar font-serif">
-                  <div className="pagination-count-label">
-                    Showing{" "}
-                    <strong>
-                      {startIndex + 1}&ndash;
-                      {Math.min(startIndex + itemsPerPage, filteredGuests.length)}
-                    </strong>{" "}
-                    of <strong>{filteredGuests.length}</strong> guests
-                  </div>
-
-                  <div className="pagination-actions">
-                    <button
-                      type="button"
-                      className="pagination-btn nav-btn"
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 1))
-                      }
-                      disabled={validCurrentPage === 1}
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft size={16} />
-                      <span className="pagination-btn-text">PREV</span>
-                    </button>
-
-                    <div className="pagination-pages-wrap">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                        (pageNum) => (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            className={`pagination-page-number ${
-                              validCurrentPage === pageNum ? "active" : ""
-                            }`}
-                            onClick={() => setCurrentPage(pageNum)}
-                            aria-label={`Go to page ${pageNum}`}
-                            aria-current={
-                              validCurrentPage === pageNum ? "page" : undefined
-                            }
-                          >
-                            {pageNum}
-                          </button>
-                        ),
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      className="pagination-btn nav-btn"
-                      onClick={() =>
-                        setCurrentPage((prev) =>
-                          Math.min(prev + 1, totalPages),
-                        )
-                      }
-                      disabled={validCurrentPage === totalPages}
-                      aria-label="Next page"
-                    >
-                      <span className="pagination-btn-text">NEXT</span>
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
+            ) : filteredGuests.length === 0 ? (
+              <div className="admin-mobile-empty-card font-khmer">
+                <div className="empty-state-icon-wrap">
+                  <Users size={32} />
                 </div>
-              )}
-            </>
-          )}
+                <h3 className="empty-state-title">
+                  រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
+                </h3>
+                <p className="empty-state-sub-khmer">
+                  សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់
+                  &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ
+                  ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
+                </p>
+                <span className="empty-state-sub-en font-serif">
+                  No guests found. Use the &ldquo;ADD GUEST&rdquo; form above to add a guest and generate their personalized link.
+                </span>
+              </div>
+            ) : (
+              <div className="admin-mobile-card-list">
+                {filteredGuests.map((guest) => {
+                  const isCopied = copiedId === guest.id;
+                  const origin =
+                    typeof window !== "undefined"
+                      ? window.location.origin
+                      : "";
+                  const slug = guest.invitation_slug || "";
+                  const inviteUrl = slug
+                    ? `${origin}/invite/${encodeURIComponent(slug)}`
+                    : "";
+                  const firstLetter = (guest.guest_name || "G")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase();
+
+                  return (
+                    <div
+                      key={guest.id}
+                      className="admin-mobile-guest-card"
+                      onClick={() => {
+                        setSelectedMobileGuest(guest);
+                        setEditingGuest(null);
+                        setEditName("");
+                        setEditSlug("");
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedMobileGuest(guest);
+                        }
+                      }}
+                    >
+                      <div className="mobile-card-top">
+                        <div className="mobile-card-identity">
+                          <div className="guest-avatar-circle font-khmer">
+                            {firstLetter}
+                          </div>
+                          <div className="mobile-guest-info">
+                            <h3 className="mobile-guest-name font-khmer">
+                              {guest.guest_name}
+                            </h3>
+                            <span className="mobile-guest-slug font-sans">
+                              /invite/{slug || "(no slug set)"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`status-pill status-${guest.rsvp_status} font-serif`}
+                        >
+                          {guest.rsvp_status === "accepted" && (
+                            <CheckCircle2 size={12} />
+                          )}
+                          {guest.rsvp_status === "declined" && (
+                            <XCircle size={12} />
+                          )}
+                          {guest.rsvp_status === "pending" && (
+                            <Clock size={12} />
+                          )}
+                          <span>{guest.rsvp_status.toUpperCase()}</span>
+                        </span>
+                      </div>
+
+                      {guest.rsvp_message && (
+                        <div className="mobile-card-message font-khmer">
+                          <MessageSquare size={13} className="mobile-msg-icon" />
+                          <p className="mobile-msg-text">
+                            &ldquo;{guest.rsvp_message}&rdquo;
+                          </p>
+                        </div>
+                      )}
+
+                      <div
+                        className="mobile-card-actions"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className={`mobile-card-btn copy-btn ${isCopied ? "is-copied" : ""}`}
+                          onClick={() => handleCopyLink(guest)}
+                          disabled={!slug}
+                          title="Copy invitation link"
+                        >
+                          {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{isCopied ? "COPIED" : "COPY LINK"}</span>
+                        </button>
+
+                        {inviteUrl && (
+                          <a
+                            href={inviteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mobile-card-btn open-btn"
+                            title="Open invitation in new tab"
+                          >
+                            <ExternalLink size={14} />
+                            <span>OPEN</span>
+                          </a>
+                        )}
+
+                        <button
+                          type="button"
+                          className="mobile-card-btn details-btn"
+                          onClick={() => {
+                            setSelectedMobileGuest(guest);
+                            setEditingGuest(null);
+                            setEditName("");
+                            setEditSlug("");
+                          }}
+                          title="View guest details"
+                        >
+                          <span>DETAILS</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
-      {/* Dedicated Guest Detail View (Slide-over Drawer on Desktop, Responsive Bottom-Sheet on Mobile) */}
-      <GuestDetailDrawer
-        isOpen={Boolean(selectedGuestId && selectedGuest)}
-        guest={selectedGuest}
-        onClose={() => setSelectedGuestId(null)}
-        onCopyLink={handleCopyLink}
-        isCopied={Boolean(selectedGuestId && copiedId === selectedGuestId)}
-        onDelete={handleDeleteGuest}
-        onSaveEdit={handleSaveEdit}
-        isSavingEdit={isSavingEdit}
-        editError={errorMsg}
-        clearEditError={() => setErrorMsg("")}
-      />
+      {/* Mobile Guest Detail Bottom Sheet (Active on Mobile card tap) */}
+      {selectedMobileGuest && (
+        <div
+          className="mobile-sheet-overlay"
+          onClick={() => {
+            setSelectedMobileGuest(null);
+            setEditingGuest(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Guest details"
+        >
+          <div
+            className="mobile-sheet-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Handle Bar */}
+            <div className="mobile-sheet-handle-bar" aria-hidden="true">
+              <span className="mobile-sheet-drag-handle" />
+            </div>
+
+            {/* Sheet Header */}
+            <div className="mobile-sheet-header">
+              <div className="mobile-sheet-header-left">
+                <div className="guest-avatar-circle font-khmer">
+                  {(selectedMobileGuest.guest_name || "G")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+                <div className="mobile-sheet-header-text">
+                  <h3 className="mobile-sheet-guest-name font-khmer">
+                    {selectedMobileGuest.guest_name}
+                  </h3>
+                  <span className="mobile-sheet-sub font-serif">
+                    GUEST DETAILS &bull; ពត៌មានភ្ញៀវ
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="mobile-sheet-close-btn"
+                onClick={() => {
+                  setSelectedMobileGuest(null);
+                  setEditingGuest(null);
+                }}
+                aria-label="Close guest details"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Sheet Body */}
+            <div className="mobile-sheet-body">
+              {editingGuest === selectedMobileGuest.id ? (
+                /* Mobile Inline Edit Form inside Bottom Sheet */
+                <div className="mobile-sheet-edit-box">
+                  <div className="mobile-sheet-field">
+                    <label className="mobile-field-label font-khmer">
+                      ឈ្មោះភ្ញៀវ / Guest Name:
+                    </label>
+                    <input
+                      type="text"
+                      className="mobile-sheet-input font-khmer"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      autoFocus
+                      disabled={isSavingEdit}
+                      maxLength={150}
+                    />
+                  </div>
+
+                  <div className="mobile-sheet-field">
+                    <label className="mobile-field-label font-serif">
+                      Custom Slug (/invite/...):
+                    </label>
+                    <div className="mobile-slug-input-wrap">
+                      <span className="slug-input-prefix font-sans">
+                        /invite/
+                      </span>
+                      <input
+                        type="text"
+                        className="mobile-sheet-slug-input font-sans"
+                        placeholder="custom-slug"
+                        value={editSlug}
+                        onChange={(e) =>
+                          setEditSlug(normalizeSlug(e.target.value))
+                        }
+                        disabled={isSavingEdit}
+                        maxLength={60}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mobile-sheet-edit-actions">
+                    <button
+                      type="button"
+                      className="mobile-btn-save font-serif"
+                      onClick={async () => {
+                        await handleSaveEdit(selectedMobileGuest.id);
+                        setSelectedMobileGuest((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                guest_name: editName.trim(),
+                                invitation_slug: editSlug.trim()
+                                  ? normalizeSlug(editSlug, {
+                                      stripEdges: true,
+                                    })
+                                  : prev.invitation_slug,
+                              }
+                            : null,
+                        );
+                      }}
+                      disabled={isSavingEdit || !editName.trim()}
+                    >
+                      {isSavingEdit ? (
+                        <>
+                          <Loader2 size={16} className="spinner-icon" />
+                          <span>SAVING...</span>
+                        </>
+                      ) : (
+                        <span>រក្សាទុក &bull; SAVE CHANGES</span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="mobile-btn-cancel font-serif"
+                      onClick={() => {
+                        setEditingGuest(null);
+                        setEditName("");
+                        setEditSlug("");
+                      }}
+                      disabled={isSavingEdit}
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Mobile Guest Detail Display */
+                <>
+                  {/* Status & Timing Box */}
+                  <div className="mobile-detail-group">
+                    <div className="mobile-detail-row">
+                      <span className="detail-meta-label font-serif">
+                        RSVP STATUS
+                      </span>
+                      <span
+                        className={`status-pill status-${selectedMobileGuest.rsvp_status} font-serif`}
+                      >
+                        {selectedMobileGuest.rsvp_status === "accepted" && (
+                          <CheckCircle2 size={13} />
+                        )}
+                        {selectedMobileGuest.rsvp_status === "declined" && (
+                          <XCircle size={13} />
+                        )}
+                        {selectedMobileGuest.rsvp_status === "pending" && (
+                          <Clock size={13} />
+                        )}
+                        <span>
+                          {selectedMobileGuest.rsvp_status.toUpperCase()}
+                        </span>
+                      </span>
+                    </div>
+
+                    {selectedMobileGuest.created_at && (
+                      <div className="mobile-detail-row">
+                        <span className="detail-meta-label font-serif">
+                          CREATED DATE
+                        </span>
+                        <span className="detail-meta-val font-serif">
+                          {new Date(
+                            selectedMobileGuest.created_at,
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Personalized Link Box */}
+                  <div className="mobile-detail-group">
+                    <span className="detail-section-title font-serif">
+                      PERSONALIZED INVITATION LINK
+                    </span>
+                    <div className="mobile-slug-preview-box">
+                      <code className="mobile-slug-code font-sans">
+                        /invite/
+                        {selectedMobileGuest.invitation_slug || "(no slug set)"}
+                      </code>
+                    </div>
+
+                    <div className="mobile-link-btns-row">
+                      <button
+                        type="button"
+                        className={`mobile-sheet-link-btn copy font-serif ${copiedId === selectedMobileGuest.id ? "is-copied" : ""}`}
+                        onClick={() => handleCopyLink(selectedMobileGuest)}
+                        disabled={!selectedMobileGuest.invitation_slug}
+                      >
+                        {copiedId === selectedMobileGuest.id ? (
+                          <>
+                            <Check size={16} />
+                            <span>COPIED TO CLIPBOARD!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={16} />
+                            <span>COPY INVITATION LINK</span>
+                          </>
+                        )}
+                      </button>
+
+                      {selectedMobileGuest.invitation_slug && (
+                        <a
+                          href={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${encodeURIComponent(selectedMobileGuest.invitation_slug)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mobile-sheet-link-btn open font-serif"
+                        >
+                          <ExternalLink size={16} />
+                          <span>OPEN INVITATION</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Message & Blessings Box */}
+                  <div className="mobile-detail-group">
+                    <span className="detail-section-title font-serif">
+                      RSVP MESSAGE &bull; សារជូនពរ
+                    </span>
+                    {selectedMobileGuest.rsvp_message ? (
+                      <div className="mobile-message-quote font-khmer">
+                        <MessageSquare size={16} className="quote-icon" />
+                        <p className="quote-text">
+                          &ldquo;{selectedMobileGuest.rsvp_message}&rdquo;
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mobile-no-message font-khmer">
+                        មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Bottom Action Buttons */}
+                  <div className="mobile-sheet-footer">
+                    <button
+                      type="button"
+                      className="mobile-sheet-footer-btn edit font-serif"
+                      onClick={() => handleStartEdit(selectedMobileGuest)}
+                    >
+                      <Edit2 size={16} />
+                      <span>EDIT GUEST</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="mobile-sheet-footer-btn delete font-serif"
+                      onClick={() => {
+                        const target = selectedMobileGuest;
+                        setSelectedMobileGuest(null);
+                        handleDeleteGuest(target);
+                      }}
+                    >
+                      <Trash2 size={16} />
+                      <span>DELETE GUEST</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal matching Admin Dashboard Design System */}
       <DeleteConfirmationModal
