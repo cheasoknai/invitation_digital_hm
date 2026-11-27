@@ -79,9 +79,7 @@ export default function Countdown() {
     <div className="countdown-container" aria-label="Wedding Countdown">
       <div className="countdown-header">
         <p className="countdown-eyebrow font-serif">COUNTDOWN TO THE BIG DAY</p>
-        <p className="countdown-khmer-sub font-khmer">
-          រាប់ថយក្រោយឆ្ពោះទៅកាន់ថ្ងៃមង្គល
-        </p>
+        <p className="countdown-khmer-sub font-khmer">ចំនួនថ្ងៃរាប់ថយក្រោយ</p>
       </div>
 
       {timeLeft.isPast ? (
