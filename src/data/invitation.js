@@ -446,7 +446,8 @@ export const invitationData = {
     invitationTitleEnglish: "Wedding Invitation",
     greetingKhmer:
       "ឯកឧត្តម លោកជំទាវ លោក លោកស្រី អ្នកនាងកញ្ញា ចូលរួមជាអធិបតី និងជាភ្ញៀវកិត្តិយស ដើម្បីប្រសិទ្ធពរជ័យ សិរីសួស្តី ក្នុងពិធីអាពាហ៍ពិពាហ៍កូនប្រុស-កូនស្រីរបស់យើងខ្ញុំ។",
-    greetingEnglish: "",
+    greetingEnglish:
+      "We have the profound honor to welcome your esteemed presence and blessings at the wedding celebration of our son and daughter.",
     // Merged Gratitude & Apology (សេចក្តីថ្លែងអំណរគុណ និងសូមខន្តីអភ័យទោស)
     closingTitleKhmer: "សេចក្តីថ្លែងអំណរគុណ និងខន្តីអភ័យទោស",
     closingTitleEnglish: "GRATITUDE & SINCERE APOLOGY",
