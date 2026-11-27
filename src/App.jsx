@@ -186,9 +186,6 @@ export default function App({ guest, onRsvpUpdated }) {
               }}
               threshold={0.15}
             >
-              <p className="section-subtitle font-serif">
-                THE WEDDING CELEBRATION
-              </p>
               <h1 className="section-title-khmer">
                 សិរីសួស្តីមង្គលអាពាហ៍ពិពាហ៍
               </h1>
