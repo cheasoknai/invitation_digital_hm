@@ -7,15 +7,16 @@ import {
   UserPlus,
   Search,
   Copy,
-  ExternalLink,
-  Trash2,
-  Edit2,
   LogOut,
   RefreshCw,
   Check,
   Globe,
   Loader2,
   Link2,
+  ChevronRight,
+  ChevronLeft,
+  Calendar,
+  X,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import {
@@ -27,6 +28,7 @@ import {
 } from "../lib/guestService.js";
 import AdminLogin from "./AdminLogin.jsx";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal.jsx";
+import GuestDetailDrawer from "../components/GuestDetailDrawer.jsx";
 
 /**
  * AdminDashboard Component
@@ -36,6 +38,11 @@ import DeleteConfirmationModal from "../components/DeleteConfirmationModal.jsx";
  * Supports custom invitation slugs with automatic normalization & duplicate validation.
  * Full CRUD operations persist directly to Supabase public.guests PostgreSQL table
  * under Row Level Security (RLS) with the 'authenticated' role.
+ *
+ * Responsive Redesign:
+ * - Replaces rigid table with interactive, touch-friendly guest cards.
+ * - Dedicated slide-over detail drawer on desktop, responsive bottom-sheet on mobile.
+ * - Seamless search, filtering, and responsive pagination.
  */
 export default function AdminDashboard() {
   const [session, setSession] = useState(null);
@@ -55,10 +62,14 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  // Inline editing state: guest ID string or null
-  const [editingGuest, setEditingGuest] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editSlug, setEditSlug] = useState("");
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  // Selected guest ID for Dedicated Detail Drawer (null when closed)
+  const [selectedGuestId, setSelectedGuestId] = useState(null);
+
+  // Inline editing state for detail drawer / quick edits
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Copied link feedback: guestId string or null
@@ -69,16 +80,30 @@ export default function AdminDashboard() {
   // Selected guest for custom Delete Confirmation Dialog (null when closed)
   const [guestToDelete, setGuestToDelete] = useState(null);
 
-  // Close delete modal on Escape key press
+  // Derive the active selected guest object from guests state
+  const selectedGuest = guests.find((g) => g.id === selectedGuestId) || null;
+
+  // Reset pagination to page 1 whenever search query or status filter changes
+  const [prevFilters, setPrevFilters] = useState({ searchQuery, statusFilter });
+  if (prevFilters.searchQuery !== searchQuery || prevFilters.statusFilter !== statusFilter) {
+    setPrevFilters({ searchQuery, statusFilter });
+    setCurrentPage(1);
+  }
+
+  // Close modals/drawers on Escape key press with proper hierarchy
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && guestToDelete && !deletingId) {
-        setGuestToDelete(null);
+      if (e.key === "Escape") {
+        if (guestToDelete && !deletingId) {
+          setGuestToDelete(null);
+        } else if (selectedGuestId) {
+          setSelectedGuestId(null);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [guestToDelete, deletingId]);
+  }, [guestToDelete, deletingId, selectedGuestId]);
 
   // 1. Manage Auth Session (Supabase Auth as single source of truth)
   useEffect(() => {
@@ -144,7 +169,6 @@ export default function AdminDashboard() {
     setErrorMsg("");
 
     try {
-      // Verify active session before querying
       const {
         data: { session: currentSession },
       } = await supabase.auth.getSession();
@@ -183,9 +207,7 @@ export default function AdminDashboard() {
 
     let isMounted = true;
 
-    // A. Initial data load
     const loadInitialGuests = async () => {
-      // Async boundary prevents synchronous setState cascade
       await Promise.resolve();
       if (!isMounted) return;
 
@@ -221,13 +243,10 @@ export default function AdminDashboard() {
 
     loadInitialGuests();
 
-    // B. Set up Supabase Realtime channel for live cross-device synchronization
-    // Generates a unique channel ID per mount to avoid React 19 StrictMode topic collisions
     const channelId = `admin-guests-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     let channel = null;
 
     const setupRealtime = async () => {
-      // Ensure WebSocket connection is authenticated with user's JWT so RLS allows receiving events
       if (session?.access_token) {
         try {
           await supabase.realtime.setAuth(session.access_token);
@@ -251,20 +270,14 @@ export default function AdminDashboard() {
             if (!isMounted) return;
 
             const { eventType, new: newRecord, old: oldRecord } = payload;
-            console.log(
-              `[Realtime] ${eventType} event received:`,
-              newRecord || oldRecord,
-            );
 
             if (eventType === "INSERT" && newRecord?.id) {
               setGuests((prev) => {
-                // Deduplicate: if guest with this ID already exists, update in-place with latest db state
                 if (prev.some((g) => g.id === newRecord.id)) {
                   return prev.map((g) =>
                     g.id === newRecord.id ? { ...g, ...newRecord } : g,
                   );
                 }
-                // Prepend newly inserted guest so it appears immediately at top of list
                 return [newRecord, ...prev];
               });
             } else if (eventType === "UPDATE" && newRecord?.id) {
@@ -275,12 +288,15 @@ export default function AdminDashboard() {
               );
             } else if (eventType === "DELETE" && oldRecord?.id) {
               setGuests((prev) => prev.filter((g) => g.id !== oldRecord.id));
+              // If deleted guest was currently selected in drawer, close drawer cleanly
+              setSelectedGuestId((prevId) =>
+                prevId === oldRecord.id ? null : prevId,
+              );
             }
           },
         )
         .subscribe((status, err) => {
           if (!isMounted) return;
-          console.log(`[Realtime] Subscription status [${channelId}]:`, status);
           if (status === "SUBSCRIBED") {
             setRealtimeStatus("connected");
           } else if (status === "CHANNEL_ERROR") {
@@ -296,7 +312,6 @@ export default function AdminDashboard() {
 
     setupRealtime();
 
-    // C. Reconcile on focus, reconnect, or tab visibility change
     const handleReconnection = async () => {
       if (document.visibilityState === "visible" || navigator.onLine) {
         try {
@@ -317,14 +332,12 @@ export default function AdminDashboard() {
     window.addEventListener("focus", handleReconnection);
     document.addEventListener("visibilitychange", handleReconnection);
 
-    // D. Periodic fallback heartbeat sync (every 10 seconds while tab is active)
     const syncInterval = setInterval(() => {
       if (document.visibilityState === "visible") {
         handleReconnection();
       }
     }, 10000);
 
-    // E. Cleanup on unmount or session change
     return () => {
       isMounted = false;
       clearInterval(syncInterval);
@@ -356,7 +369,6 @@ export default function AdminDashboard() {
         ? normalizeSlug(newGuestSlug, { stripEdges: true })
         : "";
 
-      // Determine slug: if custom slug is provided, validate uniqueness
       let candidateSlug = cleanCustomSlug;
       if (cleanCustomSlug) {
         const uniqueness = await checkSlugIsUnique(cleanCustomSlug, null, guests);
@@ -368,18 +380,15 @@ export default function AdminDashboard() {
           return;
         }
       } else {
-        // If left empty, fallback to automatic slug generated from guest name
         candidateSlug = generateGuestSlug(newGuestName.trim(), guests);
       }
 
-      // Call insertGuest service which executes await supabase.from("guests").insert(...)
       const { data, error } = await insertGuest({
         guestName: newGuestName.trim(),
         token,
         slug: candidateSlug,
       });
 
-      // Check error: if insert failed, display error and NEVER add to React state
       if (error) {
         console.error("Supabase INSERT error:", error);
         if (error.code === "23505") {
@@ -395,7 +404,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Database confirmed! Only now update React state
       if (data) {
         setGuests((prev) => {
           if (prev.some((g) => g.id === data.id)) {
@@ -405,6 +413,8 @@ export default function AdminDashboard() {
         });
         setNewGuestName("");
         setNewGuestSlug("");
+        // Automatically select the newly created guest to open drawer immediately
+        setSelectedGuestId(data.id);
       }
     } catch (err) {
       console.error("Exception in handleAddGuest:", err);
@@ -445,8 +455,10 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Only update state after database confirms deletion
       setGuests((prev) => prev.filter((g) => g.id !== guestToDelete.id));
+      if (selectedGuestId === guestToDelete.id) {
+        setSelectedGuestId(null);
+      }
       setGuestToDelete(null);
     } catch (err) {
       console.error("Exception in handleConfirmDelete:", err);
@@ -456,24 +468,17 @@ export default function AdminDashboard() {
     }
   };
 
-  // 6. Edit Guest: supports editing both Guest Name and Custom Slug
-  const handleStartEdit = (guest) => {
-    setEditingGuest(guest.id);
-    setEditName(guest.guest_name || "");
-    setEditSlug(guest.invitation_slug || "");
-    setErrorMsg("");
-  };
-
-  const handleSaveEdit = async (guestId) => {
-    if (!editName.trim()) return;
+  // 6. Save Edit: supports editing guest name and custom slug
+  const handleSaveEdit = async (guestId, editName, editSlug) => {
+    if (!editName.trim()) return false;
 
     if (!session?.access_token) {
       setErrorMsg("Your session has expired. Please sign in again.");
-      return;
+      return false;
     }
 
     const currentGuest = guests.find((g) => g.id === guestId);
-    if (!currentGuest) return;
+    if (!currentGuest) return false;
 
     setIsSavingEdit(true);
     setErrorMsg("");
@@ -484,8 +489,6 @@ export default function AdminDashboard() {
         ? normalizeSlug(editSlug, { stripEdges: true })
         : "";
 
-      // Determine final slug:
-      // If Admin entered a slug, validate uniqueness unless unchanged
       let finalSlug = currentGuest.invitation_slug || "";
       if (cleanCustomSlug) {
         if (cleanCustomSlug !== (currentGuest.invitation_slug || "")) {
@@ -499,18 +502,17 @@ export default function AdminDashboard() {
               uniqueness.error ||
                 `The slug "${cleanCustomSlug}" is already in use.`,
             );
-            return;
+            return false;
           }
         }
         finalSlug = cleanCustomSlug;
       } else if (!currentGuest.invitation_slug) {
-        // If guest has no slug yet and field is left empty, generate automatic slug
         finalSlug = generateGuestSlug(trimmedName, guests, guestId);
       }
 
       if (!finalSlug) {
         setErrorMsg("A valid invitation slug is required.");
-        return;
+        return false;
       }
 
       const updatePayload = {
@@ -535,10 +537,9 @@ export default function AdminDashboard() {
         } else {
           setErrorMsg(error.message || "Failed to update guest in database.");
         }
-        return;
+        return false;
       }
 
-      // Database confirmed! Only now update state
       setGuests((prev) =>
         prev.map((g) =>
           g.id === guestId
@@ -552,18 +553,17 @@ export default function AdminDashboard() {
         ),
       );
 
-      setEditingGuest(null);
-      setEditName("");
-      setEditSlug("");
+      return true;
     } catch (err) {
       console.error("Exception in handleSaveEdit:", err);
       setErrorMsg(err.message || "Failed to update guest in database.");
+      return false;
     } finally {
       setIsSavingEdit(false);
     }
   };
 
-  // 7. Copy personalized invite link using stored guest invitation_slug
+  // 7. Copy personalized invite link
   const handleCopyLink = async (guest) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const slug = guest.invitation_slug;
@@ -592,6 +592,7 @@ export default function AdminDashboard() {
     }
     setSession(null);
     setGuests([]);
+    setSelectedGuestId(null);
   };
 
   // Loading Screen while verifying session
@@ -640,6 +641,15 @@ export default function AdminDashboard() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Calculate pagination slices
+  const totalPages = Math.max(1, Math.ceil(filteredGuests.length / itemsPerPage));
+  const validCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (validCurrentPage - 1) * itemsPerPage;
+  const paginatedGuests = filteredGuests.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
 
   return (
     <div className="admin-dashboard-container">
@@ -867,29 +877,9 @@ export default function AdminDashboard() {
 
           {/* Real-time slug preview hint */}
           {newGuestName.trim() && (
-            <div
-              style={{
-                marginTop: "10px",
-                fontSize: "0.82rem",
-                color: "#6b7280",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                flexWrap: "wrap",
-              }}
-            >
+            <div className="admin-slug-preview-row">
               <span className="font-serif">Generated URL Preview:</span>
-              <code
-                className="hint-slug-code"
-                style={{
-                  color: "var(--color-burgundy)",
-                  fontWeight: 700,
-                  background: "#fbf9f5",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                  border: "1px solid rgba(181, 155, 109, 0.3)",
-                }}
-              >
+              <code className="hint-slug-code">
                 /invite/
                 {newGuestSlug
                   ? normalizeSlug(newGuestSlug, { stripEdges: true })
@@ -919,9 +909,9 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Guest Management Table Section */}
-        <section className="admin-table-section">
-          {/* Table Toolbar: Search, Filters, Refresh */}
+        {/* Guest Management Section: Responsive Interactive List */}
+        <section className="admin-directory-section">
+          {/* Directory Toolbar: Search, Filters, Refresh */}
           <div className="admin-table-toolbar">
             <div className="toolbar-search-wrap">
               <Search
@@ -936,6 +926,16 @@ export default function AdminDashboard() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Clear search query"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             <div className="toolbar-controls">
@@ -977,7 +977,8 @@ export default function AdminDashboard() {
                 className="toolbar-refresh-btn font-serif"
                 onClick={fetchGuests}
                 disabled={loadingGuests}
-                title="Refresh list"
+                title="Refresh guest list"
+                aria-label="Refresh guest list"
               >
                 <RefreshCw
                   size={15}
@@ -987,278 +988,235 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Guest List Table */}
-          <div className="admin-table-responsive">
-            <table className="admin-guest-table">
-              <thead>
-                <tr>
-                  <th className="font-serif">GUEST NAME</th>
-                  <th className="font-serif">RSVP STATUS</th>
-                  <th className="font-serif">INVITATION LINK</th>
-                  <th className="font-serif">MESSAGE / NOTE</th>
-                  <th className="font-serif">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingGuests && guests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="admin-table-loading font-khmer">
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                          padding: "2rem",
-                        }}
-                      >
-                        <Loader2 size={24} className="spinner-icon" />
-                        <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : filteredGuests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="admin-empty-state-cell">
-                      <div className="admin-empty-state-card font-khmer">
-                        <div className="empty-state-icon-wrap">
-                          <Users size={32} />
+          {/* Guest List State & Cards */}
+          {loadingGuests && guests.length === 0 ? (
+            <div className="admin-list-loading font-khmer">
+              <Loader2 size={24} className="spinner-icon" />
+              <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
+            </div>
+          ) : filteredGuests.length === 0 ? (
+            <div className="admin-empty-state-card font-khmer">
+              <div className="empty-state-icon-wrap">
+                <Users size={32} />
+              </div>
+              <h3 className="empty-state-title">
+                រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
+              </h3>
+              <p className="empty-state-sub-khmer">
+                {searchQuery || statusFilter !== "all"
+                  ? "គ្មានភ្ញៀវដែលត្រូវគ្នានឹងការស្វែងរករបស់អ្នកទេ។ សូមសាកល្បងស្វែងរកម្តងទៀត។"
+                  : "សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់ខាងលើ ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។"}
+              </p>
+              <span className="empty-state-sub-en font-serif">
+                {searchQuery || statusFilter !== "all"
+                  ? "No matching guests found. Try adjusting your search query or filter."
+                  : "No guests registered yet. Use the Add Guest form above to begin."}
+              </span>
+            </div>
+          ) : (
+            <>
+              {/* Responsive Interactive Guest Cards List */}
+              <div
+                className="admin-guest-cards-list"
+                role="list"
+                aria-label="Guest Directory"
+              >
+                {paginatedGuests.map((guest) => {
+                  const isCopied = copiedId === guest.id;
+                  const isSelected = selectedGuestId === guest.id;
+                  const firstLetter = (guest.guest_name || "G")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase();
+                  const slug = guest.invitation_slug || "";
+
+                  return (
+                    <div
+                      key={guest.id}
+                      className={`admin-guest-item-card ${isSelected ? "is-active-selection" : ""}`}
+                      onClick={() => setSelectedGuestId(guest.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedGuestId(guest.id);
+                        }
+                      }}
+                      aria-label={`View details for ${guest.guest_name}`}
+                    >
+                      {/* Left: Avatar & Identity Details */}
+                      <div className="guest-item-main">
+                        <div className="guest-avatar-circle font-khmer">
+                          {firstLetter}
                         </div>
-                        <h3 className="empty-state-title">
-                          រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
-                        </h3>
-                        <p className="empty-state-sub-khmer">
-                          សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់
-                          &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ
-                          ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
-                        </p>
-                        <span className="empty-state-sub-en font-serif">
-                          No guests found. Use the &ldquo;ADD GUEST&rdquo; form
-                          above to add a guest and generate their personalized
-                          link.
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredGuests.map((guest) => {
-                    const isEditing = editingGuest === guest.id;
-                    const isCopied = copiedId === guest.id;
-                    const origin =
-                      typeof window !== "undefined"
-                        ? window.location.origin
-                        : "";
-                    const slug = guest.invitation_slug || "";
-                    const inviteUrl = slug
-                      ? `${origin}/invite/${encodeURIComponent(slug)}`
-                      : "";
-                    const firstLetter = (guest.guest_name || "G")
-                      .trim()
-                      .charAt(0)
-                      .toUpperCase();
 
-                    return (
-                      <tr key={guest.id} className="admin-guest-row">
-                        {/* Guest Name Column */}
-                        <td className="guest-name-cell">
-                          {isEditing ? (
-                            <div className="inline-edit-wrap">
-                              <div className="inline-edit-field">
-                                <label className="inline-edit-label font-khmer">
-                                  ឈ្មោះភ្ញៀវ / Guest Name:
-                                </label>
-                                <input
-                                  type="text"
-                                  className="inline-edit-input font-khmer"
-                                  value={editName}
-                                  onChange={(e) => setEditName(e.target.value)}
-                                  autoFocus
-                                  disabled={isSavingEdit}
-                                  maxLength={150}
-                                />
-                              </div>
-
-                              <div className="inline-edit-field">
-                                <label className="inline-edit-label font-serif">
-                                  Custom Slug:
-                                </label>
-                                <div className="inline-slug-box">
-                                  <span className="inline-slug-prefix font-sans">
-                                    /invite/
-                                  </span>
-                                  <input
-                                    type="text"
-                                    className="inline-edit-slug-input font-sans"
-                                    placeholder="custom-slug"
-                                    value={editSlug}
-                                    onChange={(e) =>
-                                      setEditSlug(normalizeSlug(e.target.value))
-                                    }
-                                    disabled={isSavingEdit}
-                                    maxLength={60}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="inline-edit-actions">
-                                <button
-                                  type="button"
-                                  className="inline-save-btn font-serif"
-                                  onClick={() => handleSaveEdit(guest.id)}
-                                  disabled={isSavingEdit || !editName.trim()}
-                                  title="Save changes"
-                                >
-                                  {isSavingEdit ? "SAVING..." : "SAVE"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="inline-cancel-btn font-serif"
-                                  onClick={() => {
-                                    setEditingGuest(null);
-                                    setEditName("");
-                                    setEditSlug("");
-                                  }}
-                                  disabled={isSavingEdit}
-                                  title="Cancel edit"
-                                >
-                                  CANCEL
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="guest-name-wrapper">
-                              <div className="guest-avatar-circle font-khmer">
-                                {firstLetter}
-                              </div>
-                              <div className="guest-name-details">
-                                <span className="guest-name-text font-khmer">
-                                  {guest.guest_name}
-                                </span>
-                                {guest.created_at && (
-                                  <span className="guest-time-text font-serif">
-                                    {new Date(
-                                      guest.created_at,
-                                    ).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* RSVP Status Column */}
-                        <td className="guest-status-cell">
-                          <span
-                            className={`status-pill status-${guest.rsvp_status} font-serif`}
-                          >
-                            {guest.rsvp_status === "accepted" && (
-                              <CheckCircle2 size={13} />
-                            )}
-                            {guest.rsvp_status === "declined" && (
-                              <XCircle size={13} />
-                            )}
-                            {guest.rsvp_status === "pending" && (
-                              <Clock size={13} />
-                            )}
-                            <span>{guest.rsvp_status.toUpperCase()}</span>
-                          </span>
-                        </td>
-
-                        {/* Invitation Link Column */}
-                        <td className="guest-link-cell">
-                          <div className="guest-link-box">
-                            <span className="guest-slug-badge">
-                              <span className="slug-prefix">/invite/</span>
-                              <strong className="slug-value">
-                                {slug || "(no slug set)"}
-                              </strong>
+                        <div className="guest-item-info">
+                          <div className="guest-item-name-row">
+                            <span className="guest-item-name font-khmer">
+                              {guest.guest_name}
                             </span>
-                            <button
-                              type="button"
-                              className={`copy-link-btn ${isCopied ? "is-copied" : ""}`}
-                              onClick={() => handleCopyLink(guest)}
-                              disabled={!slug}
-                              title={
-                                slug
-                                  ? "Copy personalized invitation link"
-                                  : "Guest has no invitation slug"
-                              }
-                            >
-                              {isCopied ? (
-                                <>
-                                  <Check size={13} />
-                                  <span>COPIED!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={13} />
-                                  <span>COPY</span>
-                                </>
-                              )}
-                            </button>
+                          </div>
 
-                            {inviteUrl && (
-                              <a
-                                href={inviteUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="open-link-icon-btn"
-                                title="Open personalized invitation"
-                              >
-                                <ExternalLink size={14} />
-                              </a>
+                          <div className="guest-item-meta-row">
+                            <span className="guest-item-slug">
+                              <span className="slug-prefix">/invite/</span>
+                              <span className="slug-value">
+                                {slug || "(no slug)"}
+                              </span>
+                            </span>
+
+                            {guest.created_at && (
+                              <span className="guest-item-date font-serif">
+                                <Calendar size={11} />
+                                {new Date(
+                                  guest.created_at,
+                                ).toLocaleDateString()}
+                              </span>
                             )}
                           </div>
-                        </td>
+                        </div>
+                      </div>
 
-                        {/* Message Column */}
-                        <td className="guest-message-cell font-khmer">
-                          {guest.rsvp_message ? (
-                            <span
-                              className="guest-msg-text"
-                              title={guest.rsvp_message}
-                            >
-                              &ldquo;{guest.rsvp_message}&rdquo;
-                            </span>
-                          ) : (
-                            <span className="no-message-text">&mdash;</span>
+                      {/* Right: RSVP Status Pill, Quick Copy, and Chevron Indicator */}
+                      <div className="guest-item-controls">
+                        <span
+                          className={`status-pill status-${guest.rsvp_status} font-serif`}
+                        >
+                          {guest.rsvp_status === "accepted" && (
+                            <CheckCircle2 size={12} />
                           )}
-                        </td>
+                          {guest.rsvp_status === "declined" && (
+                            <XCircle size={12} />
+                          )}
+                          {guest.rsvp_status === "pending" && (
+                            <Clock size={12} />
+                          )}
+                          <span>{guest.rsvp_status.toUpperCase()}</span>
+                        </span>
 
-                        {/* Actions Column */}
-                        <td className="guest-actions-cell">
+                        <button
+                          type="button"
+                          className={`guest-item-copy-btn ${isCopied ? "is-copied" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyLink(guest);
+                          }}
+                          disabled={!slug}
+                          title={
+                            slug
+                              ? "Copy personalized invitation link"
+                              : "No slug configured"
+                          }
+                          aria-label="Copy invitation link"
+                        >
+                          {isCopied ? (
+                            <>
+                              <Check size={12} />
+                              <span className="copy-btn-text">COPIED</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              <span className="copy-btn-text">COPY</span>
+                            </>
+                          )}
+                        </button>
+
+                        <div
+                          className="guest-item-chevron-icon"
+                          aria-hidden="true"
+                        >
+                          <ChevronRight size={18} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Responsive Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="admin-pagination-bar font-serif">
+                  <div className="pagination-count-label">
+                    Showing{" "}
+                    <strong>
+                      {startIndex + 1}&ndash;
+                      {Math.min(startIndex + itemsPerPage, filteredGuests.length)}
+                    </strong>{" "}
+                    of <strong>{filteredGuests.length}</strong> guests
+                  </div>
+
+                  <div className="pagination-actions">
+                    <button
+                      type="button"
+                      className="pagination-btn nav-btn"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={validCurrentPage === 1}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                      <span className="pagination-btn-text">PREV</span>
+                    </button>
+
+                    <div className="pagination-pages-wrap">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                        (pageNum) => (
                           <button
+                            key={pageNum}
                             type="button"
-                            className="action-icon-btn edit-btn"
-                            onClick={() => handleStartEdit(guest)}
-                            title="Edit Guest Name"
+                            className={`pagination-page-number ${
+                              validCurrentPage === pageNum ? "active" : ""
+                            }`}
+                            onClick={() => setCurrentPage(pageNum)}
+                            aria-label={`Go to page ${pageNum}`}
+                            aria-current={
+                              validCurrentPage === pageNum ? "page" : undefined
+                            }
                           >
-                            <Edit2 size={15} />
+                            {pageNum}
                           </button>
-                          <span> | </span>
-                          <button
-                            type="button"
-                            className="action-icon-btn delete-btn"
-                            onClick={() => handleDeleteGuest(guest)}
-                            disabled={deletingId === guest.id}
-                            title="Delete Guest"
-                          >
-                            {deletingId === guest.id ? (
-                              <Loader2 size={15} className="spinner-icon" />
-                            ) : (
-                              <Trash2 size={15} />
-                            )}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        ),
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="pagination-btn nav-btn"
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(prev + 1, totalPages),
+                        )
+                      }
+                      disabled={validCurrentPage === totalPages}
+                      aria-label="Next page"
+                    >
+                      <span className="pagination-btn-text">NEXT</span>
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </section>
       </main>
+
+      {/* Dedicated Guest Detail View (Slide-over Drawer on Desktop, Responsive Bottom-Sheet on Mobile) */}
+      <GuestDetailDrawer
+        isOpen={Boolean(selectedGuestId && selectedGuest)}
+        guest={selectedGuest}
+        onClose={() => setSelectedGuestId(null)}
+        onCopyLink={handleCopyLink}
+        isCopied={Boolean(selectedGuestId && copiedId === selectedGuestId)}
+        onDelete={handleDeleteGuest}
+        onSaveEdit={handleSaveEdit}
+        isSavingEdit={isSavingEdit}
+        editError={errorMsg}
+        clearEditError={() => setErrorMsg("")}
+      />
 
       {/* Delete Confirmation Modal matching Admin Dashboard Design System */}
       <DeleteConfirmationModal
