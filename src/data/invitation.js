@@ -442,7 +442,7 @@ export const invitationData = {
 
   // --- 7. INVITATION MESSAGES & GREETINGS ---
   message: {
-    invitationTitleKhmer: "លិខិតអញ្ជើញអាពាហ៍ពិពាហ៍",
+    invitationTitleKhmer: "យើងខ្ញុំមានកិត្តិយសសូមគោរពអញ្ជើញ",
     invitationTitleEnglish: "Wedding Invitation",
     greetingKhmer:
       "យើងខ្ញុំមានកិត្តិយស និងសេចក្តីសោមនស្សរីករាយ សូមគោរពអញ្ជើញ ឯកឧត្តម លោកជំទាវ លោក លោកស្រី អ្នកនាងកញ្ញា ចូលរួមជាអធិបតី និងជាភ្ញៀវកិត្តិយស ដើម្បីប្រសិទ្ធពរជ័យ សិរីសួស្តី ក្នុងពិធីអាពាហ៍ពិពាហ៍កូនប្រុស-កូនស្រីរបស់យើងខ្ញុំ។",
