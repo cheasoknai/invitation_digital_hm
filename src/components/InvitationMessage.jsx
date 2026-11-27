@@ -39,9 +39,7 @@ export default function InvitationMessage() {
       </ScrollReveal>
 
       {/* Reusable Khmer Divider */}
-      <div className="khmer-divider" aria-hidden="true">
-        <span className="divider-ornament">✦ ❖ ✦</span>
-      </div>
+      <div className="venue-address-divider" aria-hidden="true" />
 
       {/* Message Content (Clean unboxed style) */}
       <ScrollReveal
@@ -59,11 +57,7 @@ export default function InvitationMessage() {
         {/* English Official Message & Divider (only rendered if greetingEnglish exists) */}
         {message.greetingEnglish && (
           <>
-            <div className="message-inner-divider" aria-hidden="true">
-              <span className="divider-dot">&bull;</span>
-              <span className="divider-ornament">❖</span>
-              <span className="divider-dot">&bull;</span>
-            </div>
+            <div className="venue-address-divider" aria-hidden="true" />
 
             <div className="message-text-english font-serif">
               <p>{message.greetingEnglish}</p>
