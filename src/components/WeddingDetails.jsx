@@ -331,7 +331,7 @@ export default function WeddingDetails() {
         threshold={0.15}
       >
         <h2 className="section-title-khmer font-khmer-moul">
-          កាលបរិច្ឆេទ &amp; កម្មវិធីមង្គលការ
+          កាលបរិច្ឆេទនិងកម្មវិធីមង្គលការ
         </h2>
         <p
           className="section-subtitle font-serif"
@@ -365,9 +365,6 @@ export default function WeddingDetails() {
         <div className="date-showcase-text">
           <p className="date-full-kh font-khmer">{date.displayDateKhmer}</p>
           <p className="date-full-en font-serif">{date.displayDateEnglish}</p>
-          <p className="date-tag font-serif">
-            &bull; {date.displayShortDate} &bull;
-          </p>
         </div>
       </ScrollReveal>
 
