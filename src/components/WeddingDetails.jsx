@@ -330,7 +330,6 @@ export default function WeddingDetails() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
-        <p className="section-subtitle font-serif">SAVE THE SPECIAL DATE</p>
         <h2 className="section-title-khmer font-khmer-moul">
           កាលបរិច្ឆេទ &amp; កម្មវិធីមង្គលការ
         </h2>
@@ -338,7 +337,7 @@ export default function WeddingDetails() {
           className="section-subtitle font-serif"
           style={{ letterSpacing: "2px" }}
         >
-          WEDDING SCHEDULE
+          SAVE THE SPECIAL DATE
         </p>
       </ScrollReveal>
 
