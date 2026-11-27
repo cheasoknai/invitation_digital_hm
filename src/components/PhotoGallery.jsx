@@ -202,7 +202,6 @@ export default function PhotoGallery() {
     >
       {/* Section Header */}
       <div className="section-heading">
-        <p className="section-subtitle font-serif">SWEET MEMORIES</p>
         <h2 className="section-title-khmer font-khmer-moul">
           កម្រងរូបភាពអនុស្សាវរីយ៍
         </h2>
@@ -210,7 +209,7 @@ export default function PhotoGallery() {
           className="section-subtitle font-serif"
           style={{ letterSpacing: "2px" }}
         >
-          PHOTO GALLERY &bull; PRE-WEDDING
+          PHOTO GALLERY
         </p>
       </div>
 

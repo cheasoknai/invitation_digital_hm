@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CheckCircle2, XCircle, Clock, Send, HeartHandshake, Loader2, Check } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Send,
+  HeartHandshake,
+  Loader2,
+  Check,
+} from "lucide-react";
 import { submitGuestRsvp } from "../lib/guestService.js";
 import ScrollReveal from "./common/ScrollReveal.jsx";
 
@@ -16,7 +24,7 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
   const [selectedStatus, setSelectedStatus] = useState(
     guest?.rsvp_status === "accepted" || guest?.rsvp_status === "declined"
       ? guest.rsvp_status
-      : "accepted"
+      : "accepted",
   );
   const [message, setMessage] = useState(guest?.rsvp_message || "");
   const [loading, setLoading] = useState(false);
@@ -27,8 +35,13 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
       <section id="rsvp" className="rsvp-section" aria-label="RSVP Response">
         <ScrollReveal className="section-heading" threshold={0.15}>
           <p className="section-subtitle font-serif">RSVP &bull; ATTENDANCE</p>
-          <h2 className="section-title-khmer font-khmer-moul">ការឆ្លើយតបការអញ្ជើញ</h2>
-          <p className="section-subtitle font-serif" style={{ letterSpacing: "2px" }}>
+          <h2 className="section-title-khmer font-khmer-moul">
+            ការឆ្លើយតបការអញ្ជើញ
+          </h2>
+          <p
+            className="section-subtitle font-serif"
+            style={{ letterSpacing: "2px" }}
+          >
             WEDDING ATTENDANCE
           </p>
         </ScrollReveal>
@@ -37,19 +50,29 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
           <span className="divider-ornament">✦ ❖ ✦</span>
         </div>
 
-        <ScrollReveal className="rsvp-card rsvp-general-card font-khmer" threshold={0.15}>
+        <ScrollReveal
+          className="rsvp-card rsvp-general-card font-khmer"
+          threshold={0.15}
+        >
           <HeartHandshake size={36} className="rsvp-icon-accent" />
-          <h3 className="rsvp-general-title font-khmer-moul">លិខិតអញ្ជើញទូទៅ</h3>
+          <h3 className="rsvp-general-title font-khmer-moul">
+            លិខិតអញ្ជើញទូទៅ
+          </h3>
           <p className="rsvp-general-desc">
             សូមអរគុណសម្រាប់ការទស្សនាលិខិតអញ្ជើញអាពាហ៍ពិពាហ៍របស់យើងខ្ញុំ។
-            ប្រសិនបើលោកអ្នកមានតំណភ្ជាប់ផ្ទាល់ខ្លួន (Personalized Invitation Link) សូមប្រើប្រាស់តំណភ្ជាប់នោះដើម្បីឆ្លើយតបការចូលរួម។
+            ប្រសិនបើលោកអ្នកមានតំណភ្ជាប់ផ្ទាល់ខ្លួន (Personalized Invitation
+            Link) សូមប្រើប្រាស់តំណភ្ជាប់នោះដើម្បីឆ្លើយតបការចូលរួម។
           </p>
           <p className="rsvp-general-contact font-serif">
             CONTACT HOSTS FOR PERSONALIZED RSVP
           </p>
         </ScrollReveal>
 
-        <div className="khmer-divider" aria-hidden="true" style={{ marginTop: "1.5rem" }}>
+        <div
+          className="khmer-divider"
+          aria-hidden="true"
+          style={{ marginTop: "1.5rem" }}
+        >
           <span className="divider-ornament">✦ ❖ ✦</span>
         </div>
       </section>
@@ -74,7 +97,7 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
     const { data, error } = await submitGuestRsvp(
       slug,
       selectedStatus,
-      message
+      message,
     );
 
     setLoading(false);
@@ -89,9 +112,10 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
 
     setFeedback({
       type: "success",
-      text: selectedStatus === "accepted"
-        ? "សូមអរគុណ! យើងខ្ញុំពិតជារីករាយដែលលោកអ្នកបានឆ្លើយតបចូលរួម។ (Thank you! Your attendance is confirmed.)"
-        : "សូមអរគុណសម្រាប់ការឆ្លើយតបដំណឹងមកកាន់យើងខ្ញុំ។ (Thank you for letting us know.)",
+      text:
+        selectedStatus === "accepted"
+          ? "សូមអរគុណ! យើងខ្ញុំពិតជារីករាយដែលលោកអ្នកបានឆ្លើយតបចូលរួម។ (Thank you! Your attendance is confirmed.)"
+          : "សូមអរគុណសម្រាប់ការឆ្លើយតបដំណឹងមកកាន់យើងខ្ញុំ។ (Thank you for letting us know.)",
     });
 
     if (onRsvpUpdated) {
@@ -125,9 +149,13 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
   return (
     <section id="rsvp" className="rsvp-section" aria-label="RSVP Response">
       <ScrollReveal className="section-heading" threshold={0.15}>
-        <p className="section-subtitle font-serif">RSVP &bull; ATTENDANCE</p>
-        <h2 className="section-title-khmer font-khmer-moul">ការឆ្លើយតបការអញ្ជើញ</h2>
-        <p className="section-subtitle font-serif" style={{ letterSpacing: "2px" }}>
+        <h2 className="section-title-khmer font-khmer-moul">
+          ការឆ្លើយតបការអញ្ជើញ
+        </h2>
+        <p
+          className="section-subtitle font-serif"
+          style={{ letterSpacing: "2px" }}
+        >
           WILL YOU ATTEND?
         </p>
       </ScrollReveal>
@@ -140,7 +168,9 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
         {/* Guest Personalized Greeting */}
         <div className="rsvp-guest-header">
           <p className="rsvp-guest-label font-serif">CORDIALLY INVITED GUEST</p>
-          <h3 className="rsvp-guest-name font-khmer-moul">{guest.guest_name}</h3>
+          <h3 className="rsvp-guest-name font-khmer-moul">
+            {guest.guest_name}
+          </h3>
           <div className="rsvp-current-status-wrap">
             {getStatusBadge(guest.rsvp_status)}
           </div>
@@ -180,7 +210,10 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
 
           {/* Optional Message Field */}
           <div className="rsvp-input-group">
-            <label htmlFor="rsvp-message" className="rsvp-input-label font-khmer">
+            <label
+              htmlFor="rsvp-message"
+              className="rsvp-input-label font-khmer"
+            >
               ពាក្យជូនពរ ឬកំណត់ចំណាំ (បើមាន) / Blessing or note for couple:
             </label>
             <textarea
@@ -196,7 +229,9 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
 
           {/* Feedback Message */}
           {feedback && (
-            <div className={`rsvp-feedback-box font-khmer ${feedback.type === "success" ? "feedback-success" : "feedback-error"}`}>
+            <div
+              className={`rsvp-feedback-box font-khmer ${feedback.type === "success" ? "feedback-success" : "feedback-error"}`}
+            >
               {feedback.text}
             </div>
           )}
@@ -212,15 +247,9 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
                 : "បញ្ជាក់ការឆ្លើយតប Confirm RSVP attendance"
             }
             whileHover={
-              !loading && !shouldReduceMotion
-                ? { y: -2, scale: 1.02 }
-                : {}
+              !loading && !shouldReduceMotion ? { y: -2, scale: 1.02 } : {}
             }
-            whileTap={
-              !loading && !shouldReduceMotion
-                ? { scale: 0.98 }
-                : {}
-            }
+            whileTap={!loading && !shouldReduceMotion ? { scale: 0.98 } : {}}
           >
             {/* Left Circular Medallion with Send / Loading Icon */}
             <span className="rsvp-btn-icon-circle" aria-hidden="true">
@@ -249,7 +278,11 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
         </form>
       </ScrollReveal>
 
-      <div className="khmer-divider" aria-hidden="true" style={{ marginTop: "1.5rem" }}>
+      <div
+        className="khmer-divider"
+        aria-hidden="true"
+        style={{ marginTop: "1.5rem" }}
+      >
         <span className="divider-ornament">✦ ❖ ✦</span>
       </div>
     </section>

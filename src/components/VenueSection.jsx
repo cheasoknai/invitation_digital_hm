@@ -37,15 +37,12 @@ export default function VenueSection() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
-        <p className="section-subtitle font-serif">LOCATION &amp; DIRECTIONS</p>
-        <h2 className="section-title-khmer font-khmer-moul">
-          ទីតាំងប្រារព្ធពិធី
-        </h2>
+        <h2 className="section-title-khmer font-khmer-moul">ទីតាំងកម្មវិធី</h2>
         <p
           className="section-subtitle font-serif"
           style={{ letterSpacing: "2px" }}
         >
-          WEDDING VENUE
+          LOCATION
         </p>
       </ScrollReveal>
 

@@ -82,12 +82,7 @@ export default function GiftQRCode() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
-        <p className="section-subtitle font-serif">
-          WEDDING BLESSINGS
-        </p>
-        <h2 className="section-title-khmer font-khmer-moul">
-          ចំណងដៃ
-        </h2>
+        <h2 className="section-title-khmer font-khmer-moul">ចំណងដៃ</h2>
         <p
           className="section-subtitle font-serif"
           style={{ letterSpacing: "2px" }}

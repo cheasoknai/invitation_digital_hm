@@ -387,10 +387,10 @@ export default function WeddingDetails() {
       <div className="schedule-timeline" aria-label="Ceremony Schedule List">
         <div className="schedule-header">
           <h3 className="schedule-title-kh font-khmer-moul">
-            កម្មវិធីសិរីសួស្តីអាពាហ៍ពិពាហ៍
+            របៀបវិរៈកម្មវិធី
           </h3>
           <p className="schedule-title-en font-serif">
-            PROGRAM &amp; CEREMONIES
+            EVENT AGENDA
           </p>
         </div>
 
