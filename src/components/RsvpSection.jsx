@@ -34,7 +34,6 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
     return (
       <section id="rsvp" className="rsvp-section" aria-label="RSVP Response">
         <ScrollReveal className="section-heading" threshold={0.15}>
-          <p className="section-subtitle font-serif">RSVP &bull; ATTENDANCE</p>
           <h2 className="section-title-khmer font-khmer-moul">
             ការឆ្លើយតបការអញ្ជើញ
           </h2>
