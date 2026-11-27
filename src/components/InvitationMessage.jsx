@@ -56,17 +56,20 @@ export default function InvitationMessage() {
           <p>{message.greetingKhmer}</p>
         </div>
 
-        {/* Divider inside message */}
-        <div className="message-inner-divider" aria-hidden="true">
-          <span className="divider-dot">&bull;</span>
-          <span className="divider-ornament">❖</span>
-          <span className="divider-dot">&bull;</span>
-        </div>
+        {/* English Official Message & Divider (only rendered if greetingEnglish exists) */}
+        {message.greetingEnglish && (
+          <>
+            <div className="message-inner-divider" aria-hidden="true">
+              <span className="divider-dot">&bull;</span>
+              <span className="divider-ornament">❖</span>
+              <span className="divider-dot">&bull;</span>
+            </div>
 
-        {/* English Official Message */}
-        <div className="message-text-english font-serif">
-          <p>{message.greetingEnglish}</p>
-        </div>
+            <div className="message-text-english font-serif">
+              <p>{message.greetingEnglish}</p>
+            </div>
+          </>
+        )}
       </ScrollReveal>
 
       {/* Reusable Khmer Divider */}
