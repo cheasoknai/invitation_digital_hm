@@ -20,7 +20,7 @@ import GuestInvitation from "./pages/GuestInvitation.jsx";
 
 export default function App({ guest, onRsvpUpdated }) {
   const [currentPath, setCurrentPath] = useState(() =>
-    typeof window !== "undefined" ? window.location.pathname : "/"
+    typeof window !== "undefined" ? window.location.pathname : "/",
   );
 
   useEffect(() => {
@@ -50,13 +50,19 @@ export default function App({ guest, onRsvpUpdated }) {
   }, []);
 
   // 1. Admin Route: /admin or /admin/*
-  if (!guest && (currentPath === "/admin" || currentPath.startsWith("/admin/"))) {
+  if (
+    !guest &&
+    (currentPath === "/admin" || currentPath.startsWith("/admin/"))
+  ) {
     return <AdminDashboard />;
   }
 
-  // 2. Guest Invitation Route: /invite/:slug (supports both guest slug and legacy token)
+  // 2. Guest Invitation Route: /invite/:slug (secure slug-only public invitation)
   if (!guest && currentPath.startsWith("/invite/")) {
-    const rawSlug = currentPath.replace(/^\/invite\/?/, "").split("/")[0].split("?")[0];
+    const rawSlug = currentPath
+      .replace(/^\/invite\/?/, "")
+      .split("/")[0]
+      .split("?")[0];
     const slug = decodeURIComponent(rawSlug);
     return <GuestInvitation slug={slug} />;
   }
@@ -183,7 +189,9 @@ export default function App({ guest, onRsvpUpdated }) {
               <p className="section-subtitle font-serif">
                 THE WEDDING CELEBRATION
               </p>
-              <h1 className="section-title-khmer">សិរីសួស្តី អាពាហ៍ពិពាហ៍</h1>
+              <h1 className="section-title-khmer">
+                សិរីសួស្តីមង្គលអាពាហ៍ពិពាហ៍
+              </h1>
 
               {/* Parents Names Block (Groom's Parents Left, Bride's Parents Right) */}
               <div className="header-parents-grid font-khmer">
@@ -219,26 +227,6 @@ export default function App({ guest, onRsvpUpdated }) {
                   </div>
                 </div>
               </div>
-
-              <h2
-                className="section-title font-serif"
-                style={{ marginTop: "0.75rem" }}
-              >
-                {couple.groom.initial} &amp; {couple.bride.initial}
-              </h2>
-
-              {/* Personalized Guest Welcome Badge */}
-              {guest?.guest_name && (
-                <div className="personalized-guest-welcome font-khmer">
-                  <span className="welcome-pre font-serif">CORDIALLY INVITED</span>
-                  <p className="welcome-honorific">
-                    សូមគោរពអញ្ជើញ ឯកឧត្តម លោកជំទាវ លោក លោកស្រី អ្នកនាងកញ្ញា
-                  </p>
-                  <h3 className="welcome-guest-name font-khmer-moul">
-                    {guest.guest_name}
-                  </h3>
-                </div>
-              )}
             </ScrollReveal>
 
             {/* Reusable Khmer Ornamental Divider */}
@@ -278,23 +266,19 @@ export default function App({ guest, onRsvpUpdated }) {
               type="button"
               className="btn btn-secondary retest-envelope-btn"
               onClick={handleResetInvitation}
-              style={{
-                width: "100%",
-                marginTop: "1rem",
-                padding: "0.85rem 1.25rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "0.5rem",
-                fontSize: "0.88rem",
-                letterSpacing: "0.5px",
-                borderRadius: "var(--border-radius-sm)"
-              }}
               aria-label="Re-close envelope to view opening animation again"
             >
-              <span className="font-khmer">ទស្សនាការបើកលិខិតម្តងទៀត</span>
-              <span style={{ opacity: 0.6 }}>&bull;</span>
-              <span className="font-serif">VIEW ENVELOPE AGAIN</span>
+              <span className="retest-btn-content">
+                <span className="retest-btn-khmer font-khmer">
+                  ទស្សនាការបើកលិខិតម្តងទៀត
+                </span>
+                <span className="retest-btn-separator" aria-hidden="true">
+                  &bull;
+                </span>
+                <span className="retest-btn-english font-serif">
+                  VIEW ENVELOPE AGAIN
+                </span>
+              </span>
             </button>
 
             {/* Footer Status */}

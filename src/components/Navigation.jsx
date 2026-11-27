@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { id: "venue", labelKh: "ទីតាំង", labelEn: "Venue", icon: MapPin },
   { id: "rsvp", labelKh: "ឆ្លើយតប", labelEn: "RSVP", icon: CheckCircle2 },
   { id: "gallery", labelKh: "រូបភាព", labelEn: "Gallery", icon: Image },
-  { id: "gift", labelKh: "ចងដៃ", labelEn: "Gift", icon: Gift },
+  { id: "gift", labelKh: "ចំណងដៃ", labelEn: "Gift", icon: Gift },
 ];
 
 /**

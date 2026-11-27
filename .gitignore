@@ -51,5 +51,8 @@ scratch/
 scratch_*.md
 test_norm.py
 src/lib/testSupabase.js
+__pycache__/
+*.pyc
+
 
 

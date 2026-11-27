@@ -26,6 +26,7 @@ import {
   checkSlugIsUnique,
 } from "../lib/guestService.js";
 import AdminLogin from "./AdminLogin.jsx";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal.jsx";
 
 /**
  * AdminDashboard Component
@@ -65,6 +66,19 @@ export default function AdminDashboard() {
 
   // Deleting in-flight state: guestId string or null
   const [deletingId, setDeletingId] = useState(null);
+  // Selected guest for custom Delete Confirmation Dialog (null when closed)
+  const [guestToDelete, setGuestToDelete] = useState(null);
+
+  // Close delete modal on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && guestToDelete && !deletingId) {
+        setGuestToDelete(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [guestToDelete, deletingId]);
 
   // 1. Manage Auth Session (Supabase Auth as single source of truth)
   useEffect(() => {
@@ -79,7 +93,10 @@ export default function AdminDashboard() {
         if (isMounted) {
           if (supaSession?.user && supaSession?.access_token) {
             setSession(supaSession);
-            localStorage.setItem("hm_admin_session", JSON.stringify(supaSession));
+            localStorage.setItem(
+              "hm_admin_session",
+              JSON.stringify(supaSession),
+            );
           } else {
             setSession(null);
             localStorage.removeItem("hm_admin_session");
@@ -234,14 +251,17 @@ export default function AdminDashboard() {
             if (!isMounted) return;
 
             const { eventType, new: newRecord, old: oldRecord } = payload;
-            console.log(`[Realtime] ${eventType} event received:`, newRecord || oldRecord);
+            console.log(
+              `[Realtime] ${eventType} event received:`,
+              newRecord || oldRecord,
+            );
 
             if (eventType === "INSERT" && newRecord?.id) {
               setGuests((prev) => {
                 // Deduplicate: if guest with this ID already exists, update in-place with latest db state
                 if (prev.some((g) => g.id === newRecord.id)) {
                   return prev.map((g) =>
-                    g.id === newRecord.id ? { ...g, ...newRecord } : g
+                    g.id === newRecord.id ? { ...g, ...newRecord } : g,
                   );
                 }
                 // Prepend newly inserted guest so it appears immediately at top of list
@@ -250,13 +270,13 @@ export default function AdminDashboard() {
             } else if (eventType === "UPDATE" && newRecord?.id) {
               setGuests((prev) =>
                 prev.map((g) =>
-                  g.id === newRecord.id ? { ...g, ...newRecord } : g
-                )
+                  g.id === newRecord.id ? { ...g, ...newRecord } : g,
+                ),
               );
             } else if (eventType === "DELETE" && oldRecord?.id) {
               setGuests((prev) => prev.filter((g) => g.id !== oldRecord.id));
             }
-          }
+          },
         )
         .subscribe((status, err) => {
           if (!isMounted) return;
@@ -330,89 +350,110 @@ export default function AdminDashboard() {
     setIsAdding(true);
     setErrorMsg("");
 
-    const token = generateInvitationToken();
-    const cleanCustomSlug = newGuestSlug.trim() ? normalizeSlug(newGuestSlug) : "";
+    try {
+      const token = generateInvitationToken();
+      const cleanCustomSlug = newGuestSlug.trim()
+        ? normalizeSlug(newGuestSlug, { stripEdges: true })
+        : "";
 
-    // Determine slug: if custom slug is provided, validate uniqueness
-    let candidateSlug = cleanCustomSlug;
-    if (cleanCustomSlug) {
-      const uniqueness = await checkSlugIsUnique(cleanCustomSlug, null, guests);
-      if (!uniqueness.isUnique) {
-        setErrorMsg(uniqueness.error || `The slug "${cleanCustomSlug}" is already in use.`);
-        setIsAdding(false);
+      // Determine slug: if custom slug is provided, validate uniqueness
+      let candidateSlug = cleanCustomSlug;
+      if (cleanCustomSlug) {
+        const uniqueness = await checkSlugIsUnique(cleanCustomSlug, null, guests);
+        if (!uniqueness.isUnique) {
+          setErrorMsg(
+            uniqueness.error ||
+              `The slug "${cleanCustomSlug}" is already in use.`,
+          );
+          return;
+        }
+      } else {
+        // If left empty, fallback to automatic slug generated from guest name
+        candidateSlug = generateGuestSlug(newGuestName.trim(), guests);
+      }
+
+      // Call insertGuest service which executes await supabase.from("guests").insert(...)
+      const { data, error } = await insertGuest({
+        guestName: newGuestName.trim(),
+        token,
+        slug: candidateSlug,
+      });
+
+      // Check error: if insert failed, display error and NEVER add to React state
+      if (error) {
+        console.error("Supabase INSERT error:", error);
+        if (error.code === "23505") {
+          setErrorMsg(
+            `The slug "${candidateSlug}" is already in use by another guest. Please choose a different custom slug.`,
+          );
+        } else {
+          setErrorMsg(
+            error.message ||
+              "Failed to insert guest into database. Verify Supabase Auth session and RLS permissions.",
+          );
+        }
         return;
       }
-    } else {
-      // If left empty, fallback to automatic slug generated from guest name
-      candidateSlug = generateGuestSlug(newGuestName.trim(), guests);
-    }
 
-    // Call insertGuest service which executes await supabase.from("guests").insert(...)
-    const { data, error } = await insertGuest({
-      guestName: newGuestName.trim(),
-      token,
-      slug: candidateSlug,
-    });
-
-    // Check error: if insert failed, display error and NEVER add to React state
-    if (error) {
-      console.error("Supabase INSERT error:", error);
-      if (error.code === "23505") {
-        setErrorMsg(`The slug "${candidateSlug}" is already in use by another guest. Please choose a different custom slug.`);
-      } else {
-        setErrorMsg(
-          error.message ||
-            "Failed to insert guest into database. Verify Supabase Auth session and RLS permissions."
-        );
+      // Database confirmed! Only now update React state
+      if (data) {
+        setGuests((prev) => {
+          if (prev.some((g) => g.id === data.id)) {
+            return prev;
+          }
+          return [data, ...prev];
+        });
+        setNewGuestName("");
+        setNewGuestSlug("");
       }
+    } catch (err) {
+      console.error("Exception in handleAddGuest:", err);
+      setErrorMsg(err.message || "An unexpected error occurred while adding guest.");
+    } finally {
       setIsAdding(false);
-      return;
     }
-
-    // Database confirmed! Only now update React state
-    if (data) {
-      setGuests((prev) => {
-        if (prev.some((g) => g.id === data.id)) {
-          return prev;
-        }
-        return [data, ...prev];
-      });
-      setNewGuestName("");
-      setNewGuestSlug("");
-    }
-
-    setIsAdding(false);
   };
 
-  // 5. Delete Guest: strictly calls supabase.from("guests").delete() and validates response
-  const handleDeleteGuest = async (guest) => {
+  // 5. Delete Guest: opens the matching Admin Delete Confirmation Dialog
+  const handleDeleteGuest = (guest) => {
     if (!guest || !guest.id) return;
+    setErrorMsg("");
+    setGuestToDelete(guest);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!guestToDelete || !guestToDelete.id) return;
 
     if (!session?.access_token) {
       setErrorMsg("Your session has expired. Please sign in again.");
+      setGuestToDelete(null);
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${guest.guest_name}"?\nThis action cannot be undone.\n\nតើអ្នកពិតជាចង់លុប "${guest.guest_name}" មែនទេ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។`
-    );
-    if (!confirmDelete) return;
-
-    setDeletingId(guest.id);
+    setDeletingId(guestToDelete.id);
     setErrorMsg("");
 
-    const { error } = await supabase.from("guests").delete().eq("id", guest.id);
+    try {
+      const { error } = await supabase
+        .from("guests")
+        .delete()
+        .eq("id", guestToDelete.id);
 
-    if (error) {
-      console.error("Supabase DELETE error:", error);
-      setErrorMsg(error.message || "Failed to delete guest from database.");
+      if (error) {
+        console.error("Supabase DELETE error:", error);
+        setErrorMsg(error.message || "Failed to delete guest from database.");
+        return;
+      }
+
+      // Only update state after database confirms deletion
+      setGuests((prev) => prev.filter((g) => g.id !== guestToDelete.id));
+      setGuestToDelete(null);
+    } catch (err) {
+      console.error("Exception in handleConfirmDelete:", err);
+      setErrorMsg(err.message || "Failed to delete guest from database.");
+    } finally {
       setDeletingId(null);
-      return;
     }
-
-    // Only update state after database confirms deletion
-    setGuests((prev) => prev.filter((g) => g.id !== guest.id));
-    setDeletingId(null);
   };
 
   // 6. Edit Guest: supports editing both Guest Name and Custom Slug
@@ -437,88 +478,99 @@ export default function AdminDashboard() {
     setIsSavingEdit(true);
     setErrorMsg("");
 
-    const trimmedName = editName.trim();
-    const cleanCustomSlug = editSlug.trim() ? normalizeSlug(editSlug) : "";
+    try {
+      const trimmedName = editName.trim();
+      const cleanCustomSlug = editSlug.trim()
+        ? normalizeSlug(editSlug, { stripEdges: true })
+        : "";
 
-    // Determine final slug:
-    // If Admin entered a slug, validate uniqueness unless unchanged
-    let finalSlug = currentGuest.invitation_slug || currentGuest.invitation_token;
-    if (cleanCustomSlug) {
-      if (cleanCustomSlug !== (currentGuest.invitation_slug || "")) {
-        const uniqueness = await checkSlugIsUnique(cleanCustomSlug, guestId, guests);
-        if (!uniqueness.isUnique) {
-          setErrorMsg(uniqueness.error || `The slug "${cleanCustomSlug}" is already in use.`);
-          setIsSavingEdit(false);
-          return;
+      // Determine final slug:
+      // If Admin entered a slug, validate uniqueness unless unchanged
+      let finalSlug = currentGuest.invitation_slug || "";
+      if (cleanCustomSlug) {
+        if (cleanCustomSlug !== (currentGuest.invitation_slug || "")) {
+          const uniqueness = await checkSlugIsUnique(
+            cleanCustomSlug,
+            guestId,
+            guests,
+          );
+          if (!uniqueness.isUnique) {
+            setErrorMsg(
+              uniqueness.error ||
+                `The slug "${cleanCustomSlug}" is already in use.`,
+            );
+            return;
+          }
         }
+        finalSlug = cleanCustomSlug;
+      } else if (!currentGuest.invitation_slug) {
+        // If guest has no slug yet and field is left empty, generate automatic slug
+        finalSlug = generateGuestSlug(trimmedName, guests, guestId);
       }
-      finalSlug = cleanCustomSlug;
-    } else if (!currentGuest.invitation_slug) {
-      // If guest has no slug yet and field is left empty, generate automatic slug
-      finalSlug = generateGuestSlug(trimmedName, guests, guestId);
-    }
 
-    const updatePayload = {
-      guest_name: trimmedName,
-      invitation_slug: finalSlug,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase
-      .from("guests")
-      .update(updatePayload)
-      .eq("id", guestId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Supabase UPDATE error:", error);
-      if (error.code === "23505") {
-        setErrorMsg(`The slug "${finalSlug}" is already taken by another guest. Please choose a different slug.`);
-      } else if (error.code === "PGRST204" && updatePayload.invitation_slug) {
-        // Fallback if invitation_slug not in schema cache
-        const retry = await supabase
-          .from("guests")
-          .update({ guest_name: trimmedName, updated_at: new Date().toISOString() })
-          .eq("id", guestId)
-          .select()
-          .single();
-        if (retry.error) {
-          setErrorMsg(retry.error.message || "Failed to update guest in database.");
-          setIsSavingEdit(false);
-          return;
-        }
-      } else {
-        setErrorMsg(error.message || "Failed to update guest in database.");
-        setIsSavingEdit(false);
+      if (!finalSlug) {
+        setErrorMsg("A valid invitation slug is required.");
         return;
       }
+
+      const updatePayload = {
+        guest_name: trimmedName,
+        invitation_slug: finalSlug,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from("guests")
+        .update(updatePayload)
+        .eq("id", guestId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase UPDATE error:", error);
+        if (error.code === "23505") {
+          setErrorMsg(
+            `The slug "${finalSlug}" is already taken by another guest. Please choose a different slug.`,
+          );
+        } else {
+          setErrorMsg(error.message || "Failed to update guest in database.");
+        }
+        return;
+      }
+
+      // Database confirmed! Only now update state
+      setGuests((prev) =>
+        prev.map((g) =>
+          g.id === guestId
+            ? {
+                ...g,
+                ...(data || {}),
+                guest_name: trimmedName,
+                invitation_slug: finalSlug,
+              }
+            : g,
+        ),
+      );
+
+      setEditingGuest(null);
+      setEditName("");
+      setEditSlug("");
+    } catch (err) {
+      console.error("Exception in handleSaveEdit:", err);
+      setErrorMsg(err.message || "Failed to update guest in database.");
+    } finally {
+      setIsSavingEdit(false);
     }
-
-    // Database confirmed! Only now update state
-    setGuests((prev) =>
-      prev.map((g) =>
-        g.id === guestId
-          ? {
-              ...g,
-              ...(data || {}),
-              guest_name: trimmedName,
-              invitation_slug: finalSlug,
-            }
-          : g
-      )
-    );
-
-    setEditingGuest(null);
-    setEditName("");
-    setEditSlug("");
-    setIsSavingEdit(false);
   };
 
-  // 7. Copy personalized invite link using guest-name slug
+  // 7. Copy personalized invite link using stored guest invitation_slug
   const handleCopyLink = async (guest) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const slug = guest.invitation_slug || guest.invitation_token;
+    const slug = guest.invitation_slug;
+    if (!slug) {
+      setErrorMsg("This guest does not have an invitation slug configured.");
+      return;
+    }
     const inviteUrl = `${origin}/invite/${encodeURIComponent(slug)}`;
 
     try {
@@ -595,7 +647,9 @@ export default function AdminDashboard() {
       <header className="admin-topbar">
         <div className="admin-topbar-left">
           <div className="admin-brand-wrap">
-            <div className="admin-brand-crest" aria-hidden="true">H&amp;M</div>
+            <div className="admin-brand-crest" aria-hidden="true">
+              H&amp;M
+            </div>
             <div className="admin-brand-text">
               <h1 className="admin-topbar-title font-serif">
                 H&amp;M &bull; GUEST MANAGEMENT
@@ -617,8 +671,8 @@ export default function AdminDashboard() {
                 realtimeStatus === "connected"
                   ? "Real-time sync active: cross-device updates appear automatically"
                   : realtimeStatus === "error"
-                  ? "Real-time sync disconnected (click refresh if needed)"
-                  : "Connecting real-time sync..."
+                    ? "Real-time sync disconnected (click refresh if needed)"
+                    : "Connecting real-time sync..."
               }
             >
               <span className="realtime-dot" aria-hidden="true" />
@@ -626,8 +680,8 @@ export default function AdminDashboard() {
                 {realtimeStatus === "connected"
                   ? "LIVE SYNC"
                   : realtimeStatus === "error"
-                  ? "OFFLINE"
-                  : "SYNCING..."}
+                    ? "OFFLINE"
+                    : "SYNCING..."}
               </span>
             </div>
           </div>
@@ -667,9 +721,15 @@ export default function AdminDashboard() {
               <Users size={24} />
             </div>
             <div className="stat-card-info">
-              <span className="stat-card-label-khmer font-khmer">ភ្ញៀវសរុប</span>
-              <span className="stat-card-label-en font-serif">TOTAL GUESTS</span>
-              <strong className="stat-card-num font-serif">{totalGuests}</strong>
+              <span className="stat-card-label-khmer font-khmer">
+                ភ្ញៀវសរុប
+              </span>
+              <span className="stat-card-label-en font-serif">
+                TOTAL GUESTS
+              </span>
+              <strong className="stat-card-num font-serif">
+                {totalGuests}
+              </strong>
             </div>
           </div>
 
@@ -679,7 +739,9 @@ export default function AdminDashboard() {
               <CheckCircle2 size={24} />
             </div>
             <div className="stat-card-info">
-              <span className="stat-card-label-khmer font-khmer">បានឆ្លើយតបចូលរួម</span>
+              <span className="stat-card-label-khmer font-khmer">
+                បានឆ្លើយតបចូលរួម
+              </span>
               <span className="stat-card-label-en font-serif">ACCEPTED</span>
               <strong className="stat-card-num font-serif text-green">
                 {acceptedGuests}
@@ -693,7 +755,9 @@ export default function AdminDashboard() {
               <XCircle size={24} />
             </div>
             <div className="stat-card-info">
-              <span className="stat-card-label-khmer font-khmer">មិនបានចូលរួម</span>
+              <span className="stat-card-label-khmer font-khmer">
+                មិនបានចូលរួម
+              </span>
               <span className="stat-card-label-en font-serif">DECLINED</span>
               <strong className="stat-card-num font-serif text-red">
                 {declinedGuests}
@@ -707,7 +771,9 @@ export default function AdminDashboard() {
               <Clock size={24} />
             </div>
             <div className="stat-card-info">
-              <span className="stat-card-label-khmer font-khmer">មិនទាន់ឆ្លើយតប</span>
+              <span className="stat-card-label-khmer font-khmer">
+                មិនទាន់ឆ្លើយតប
+              </span>
               <span className="stat-card-label-en font-serif">PENDING</span>
               <strong className="stat-card-num font-serif text-gold">
                 {pendingGuests}
@@ -736,13 +802,19 @@ export default function AdminDashboard() {
               </div>
             </div>
             <p className="add-guest-hint font-khmer">
-              បញ្ចូលឈ្មោះភ្ញៀវជាភាសាខ្មែរ ឬអង់គ្លេស ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់ <code className="hint-slug-code">/invite/guestname</code> ជូនដោយស្វ័យប្រវត្តិ។
+              បញ្ចូលឈ្មោះភ្ញៀវជាភាសាខ្មែរ ឬអង់គ្លេស ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់{" "}
+              <code className="hint-slug-code">/invite/guestname</code>{" "}
+              ជូនដោយស្វ័យប្រវត្តិ។
             </p>
           </div>
 
           <form onSubmit={handleAddGuest} className="admin-add-form">
             <div className="admin-add-input-wrap">
-              <UserPlus size={18} className="admin-input-icon-left" aria-hidden="true" />
+              <UserPlus
+                size={18}
+                className="admin-input-icon-left"
+                aria-hidden="true"
+              />
               <input
                 type="text"
                 className="admin-add-input font-khmer"
@@ -756,7 +828,11 @@ export default function AdminDashboard() {
             </div>
 
             <div className="admin-add-slug-wrap">
-              <Link2 size={16} className="admin-input-icon-left" aria-hidden="true" />
+              <Link2
+                size={16}
+                className="admin-input-icon-left"
+                aria-hidden="true"
+              />
               <span className="slug-input-prefix font-sans">/invite/</span>
               <input
                 type="text"
@@ -814,7 +890,10 @@ export default function AdminDashboard() {
                   border: "1px solid rgba(181, 155, 109, 0.3)",
                 }}
               >
-                /invite/{newGuestSlug ? normalizeSlug(newGuestSlug) : generateGuestSlug(newGuestName, guests)}
+                /invite/
+                {newGuestSlug
+                  ? normalizeSlug(newGuestSlug, { stripEdges: true })
+                  : generateGuestSlug(newGuestName, guests)}
               </code>
             </div>
           )}
@@ -823,12 +902,18 @@ export default function AdminDashboard() {
         {/* Error Alert Box */}
         {errorMsg && (
           <div className="admin-error-box font-khmer" role="alert">
-            <p><strong>Database Notice:</strong> {errorMsg}</p>
+            <p>
+              <strong>Database Notice:</strong> {errorMsg}
+            </p>
             {(errorMsg.toLowerCase().includes("permission denied") ||
               errorMsg.toLowerCase().includes("42501") ||
               errorMsg.includes("401")) && (
-              <p style={{ marginTop: "6px", fontSize: "0.82rem", opacity: 0.9 }}>
-                💡 <strong>How to fix:</strong> Please run the SQL permission script in Supabase SQL Editor (see <code>supabase/schema.sql</code>) to grant access to the table.
+              <p
+                style={{ marginTop: "6px", fontSize: "0.82rem", opacity: 0.9 }}
+              >
+                💡 <strong>How to fix:</strong> Please run the SQL permission
+                script in Supabase SQL Editor (see{" "}
+                <code>supabase/schema.sql</code>) to grant access to the table.
               </p>
             )}
           </div>
@@ -943,10 +1028,14 @@ export default function AdminDashboard() {
                           រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
                         </h3>
                         <p className="empty-state-sub-khmer">
-                          សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់ &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
+                          សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់
+                          &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ
+                          ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
                         </p>
                         <span className="empty-state-sub-en font-serif">
-                          No guests found. Use the &ldquo;ADD GUEST&rdquo; form above to add a guest and generate their personalized link.
+                          No guests found. Use the &ldquo;ADD GUEST&rdquo; form
+                          above to add a guest and generate their personalized
+                          link.
                         </span>
                       </div>
                     </td>
@@ -959,12 +1048,14 @@ export default function AdminDashboard() {
                       typeof window !== "undefined"
                         ? window.location.origin
                         : "";
-                    const slug =
-                      guest.invitation_slug ||
-                      generateGuestSlug(guest.guest_name, guests, guest.id) ||
-                      guest.invitation_token;
-                    const inviteUrl = `${origin}/invite/${encodeURIComponent(slug)}`;
-                    const firstLetter = (guest.guest_name || "G").trim().charAt(0).toUpperCase();
+                    const slug = guest.invitation_slug || "";
+                    const inviteUrl = slug
+                      ? `${origin}/invite/${encodeURIComponent(slug)}`
+                      : "";
+                    const firstLetter = (guest.guest_name || "G")
+                      .trim()
+                      .charAt(0)
+                      .toUpperCase();
 
                     return (
                       <tr key={guest.id} className="admin-guest-row">
@@ -973,7 +1064,9 @@ export default function AdminDashboard() {
                           {isEditing ? (
                             <div className="inline-edit-wrap">
                               <div className="inline-edit-field">
-                                <label className="inline-edit-label font-khmer">ឈ្មោះភ្ញៀវ / Guest Name:</label>
+                                <label className="inline-edit-label font-khmer">
+                                  ឈ្មោះភ្ញៀវ / Guest Name:
+                                </label>
                                 <input
                                   type="text"
                                   className="inline-edit-input font-khmer"
@@ -986,15 +1079,21 @@ export default function AdminDashboard() {
                               </div>
 
                               <div className="inline-edit-field">
-                                <label className="inline-edit-label font-serif">Custom Slug:</label>
+                                <label className="inline-edit-label font-serif">
+                                  Custom Slug:
+                                </label>
                                 <div className="inline-slug-box">
-                                  <span className="inline-slug-prefix font-sans">/invite/</span>
+                                  <span className="inline-slug-prefix font-sans">
+                                    /invite/
+                                  </span>
                                   <input
                                     type="text"
                                     className="inline-edit-slug-input font-sans"
                                     placeholder="custom-slug"
                                     value={editSlug}
-                                    onChange={(e) => setEditSlug(normalizeSlug(e.target.value))}
+                                    onChange={(e) =>
+                                      setEditSlug(normalizeSlug(e.target.value))
+                                    }
                                     disabled={isSavingEdit}
                                     maxLength={60}
                                   />
@@ -1037,7 +1136,9 @@ export default function AdminDashboard() {
                                 </span>
                                 {guest.created_at && (
                                   <span className="guest-time-text font-serif">
-                                    {new Date(guest.created_at).toLocaleDateString()}
+                                    {new Date(
+                                      guest.created_at,
+                                    ).toLocaleDateString()}
                                   </span>
                                 )}
                               </div>
@@ -1068,13 +1169,20 @@ export default function AdminDashboard() {
                           <div className="guest-link-box">
                             <span className="guest-slug-badge">
                               <span className="slug-prefix">/invite/</span>
-                              <strong className="slug-value">{slug}</strong>
+                              <strong className="slug-value">
+                                {slug || "(no slug set)"}
+                              </strong>
                             </span>
                             <button
                               type="button"
                               className={`copy-link-btn ${isCopied ? "is-copied" : ""}`}
                               onClick={() => handleCopyLink(guest)}
-                              title="Copy personalized invitation link"
+                              disabled={!slug}
+                              title={
+                                slug
+                                  ? "Copy personalized invitation link"
+                                  : "Guest has no invitation slug"
+                              }
                             >
                               {isCopied ? (
                                 <>
@@ -1089,15 +1197,17 @@ export default function AdminDashboard() {
                               )}
                             </button>
 
-                            <a
-                              href={inviteUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="open-link-icon-btn"
-                              title="Open personalized invitation"
-                            >
-                              <ExternalLink size={14} />
-                            </a>
+                            {inviteUrl && (
+                              <a
+                                href={inviteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="open-link-icon-btn"
+                                title="Open personalized invitation"
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            )}
                           </div>
                         </td>
 
@@ -1125,6 +1235,7 @@ export default function AdminDashboard() {
                           >
                             <Edit2 size={15} />
                           </button>
+                          <span> | </span>
                           <button
                             type="button"
                             className="action-icon-btn delete-btn"
@@ -1148,6 +1259,20 @@ export default function AdminDashboard() {
           </div>
         </section>
       </main>
+
+      {/* Delete Confirmation Modal matching Admin Dashboard Design System */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(guestToDelete)}
+        itemName={guestToDelete?.guest_name}
+        itemDetails={
+          guestToDelete
+            ? `Slug: /invite/${guestToDelete.invitation_slug || "..."}`
+            : undefined
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setGuestToDelete(null)}
+        isDeleting={Boolean(guestToDelete && deletingId === guestToDelete.id)}
+      />
     </div>
   );
 }

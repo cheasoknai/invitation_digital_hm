@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { CheckCircle2, XCircle, Clock, Send, HeartHandshake } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { CheckCircle2, XCircle, Clock, Send, HeartHandshake, Loader2, Check } from "lucide-react";
 import { submitGuestRsvp } from "../lib/guestService.js";
 import ScrollReveal from "./common/ScrollReveal.jsx";
 
@@ -11,6 +12,7 @@ import ScrollReveal from "./common/ScrollReveal.jsx";
  * @param {function} [props.onRsvpUpdated] - Callback after successful RSVP update
  */
 export default function RsvpSection({ guest, onRsvpUpdated }) {
+  const shouldReduceMotion = useReducedMotion();
   const [selectedStatus, setSelectedStatus] = useState(
     guest?.rsvp_status === "accepted" || guest?.rsvp_status === "declined"
       ? guest.rsvp_status
@@ -59,9 +61,18 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
     setLoading(true);
     setFeedback(null);
 
-    const identifier = guest.invitation_slug || guest.invitation_token;
+    const slug = guest?.invitation_slug;
+    if (!slug) {
+      setLoading(false);
+      setFeedback({
+        type: "error",
+        text: "រកមិនឃើញលេខកូដសម្គាល់លិខិតអញ្ជើញ (Invalid or missing invitation slug).",
+      });
+      return;
+    }
+
     const { data, error } = await submitGuestRsvp(
-      identifier,
+      slug,
       selectedStatus,
       message
     );
@@ -190,15 +201,51 @@ export default function RsvpSection({ guest, onRsvpUpdated }) {
             </div>
           )}
 
-          {/* Submit Button */}
-          <button
+          {/* Submit Button: Luxury Wedding RSVP CTA matching Venue/Directions button style */}
+          <motion.button
             type="submit"
             className="rsvp-submit-btn font-serif"
             disabled={loading}
+            aria-label={
+              loading
+                ? "កំពុងបញ្ជាក់... Submitting RSVP"
+                : "បញ្ជាក់ការឆ្លើយតប Confirm RSVP attendance"
+            }
+            whileHover={
+              !loading && !shouldReduceMotion
+                ? { y: -2, scale: 1.02 }
+                : {}
+            }
+            whileTap={
+              !loading && !shouldReduceMotion
+                ? { scale: 0.98 }
+                : {}
+            }
           >
-            <Send size={16} />
-            <span>{loading ? "កំពុងបញ្ជាក់... / SUBMITTING..." : "បញ្ជាក់ការឆ្លើយតប &bull; CONFIRM RSVP"}</span>
-          </button>
+            {/* Left Circular Medallion with Send / Loading Icon */}
+            <span className="rsvp-btn-icon-circle" aria-hidden="true">
+              {loading ? (
+                <Loader2 size={18} className="rsvp-btn-spinner" />
+              ) : (
+                <Send size={16} className="rsvp-btn-send-icon" />
+              )}
+            </span>
+
+            {/* Central Typography Stack: Burgundy Khmer + Gold English */}
+            <span className="rsvp-btn-text-wrap">
+              <span className="rsvp-btn-khmer font-khmer">
+                {loading ? "កំពុងបញ្ជាក់..." : "បញ្ជាក់ការឆ្លើយតប"}
+              </span>
+              <span className="rsvp-btn-english font-serif">
+                {loading ? "SUBMITTING..." : "CONFIRM RSVP"}
+              </span>
+            </span>
+
+            {/* Right Circular Accent Container */}
+            <span className="rsvp-btn-action-circle" aria-hidden="true">
+              <Check size={14} className="rsvp-btn-action-icon" />
+            </span>
+          </motion.button>
         </form>
       </ScrollReveal>
 

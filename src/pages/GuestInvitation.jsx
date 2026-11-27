@@ -8,15 +8,15 @@ import App from "../App.jsx";
  * Loaded when a guest visits their personalized URL:
  *   /invite/:slug
  *
- * Securely retrieves ONLY this guest's data via slug (or legacy token) and renders
- * the full wedding invitation with their name personalized throughout.
+ * Securely retrieves ONLY this guest's data via their public invitation_slug
+ * and renders the full wedding invitation with their name personalized throughout.
+ * Public guests must use invitation_slug exclusively. The secret invitation_token
+ * is never accepted, queried, or exposed to public visitors.
  *
  * @param {object} props
- * @param {string} [props.slug] - Guest URL slug (e.g. 'cheasoknai')
- * @param {string} [props.token] - Legacy invitation token
+ * @param {string} props.slug - Public guest invitation slug (e.g. 'cheasoknai')
  */
-export default function GuestInvitation({ slug, token }) {
-  const identifier = slug || token;
+export default function GuestInvitation({ slug }) {
   const [guest, setGuest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -25,7 +25,8 @@ export default function GuestInvitation({ slug, token }) {
     let isMounted = true;
 
     async function loadGuest() {
-      if (!identifier) {
+      const cleanSlug = typeof slug === "string" ? slug.trim() : "";
+      if (!cleanSlug) {
         if (isMounted) {
           setError(true);
           setLoading(false);
@@ -36,12 +37,12 @@ export default function GuestInvitation({ slug, token }) {
       setLoading(true);
       setError(false);
 
-      const { data, error: fetchErr } = await fetchGuestBySlug(identifier);
+      const { data, error: fetchErr } = await fetchGuestBySlug(cleanSlug);
 
       if (!isMounted) return;
 
       if (fetchErr || !data) {
-        console.warn("Guest lookup:", fetchErr?.message || "Not found");
+        console.warn("Guest lookup failed:", fetchErr?.message || "Not found");
         setError(true);
       } else {
         setGuest(data);
@@ -54,7 +55,7 @@ export default function GuestInvitation({ slug, token }) {
     return () => {
       isMounted = false;
     };
-  }, [identifier]);
+  }, [slug]);
 
   // Handle live RSVP update from RsvpSection
   const handleRsvpUpdated = (updatedRecord) => {

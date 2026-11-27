@@ -68,139 +68,157 @@ export default function CoupleSection() {
 
       {/* Couple Grid: Side-by-side with cinematic entrance */}
       <div className="couple-grid">
-        {/* Groom Card */}
-        <ScrollReveal
-          as={motion.article}
-          className="couple-card"
-          initial={shouldReduceMotion ? {} : { opacity: 0, x: -40, y: 20 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-          threshold={0.15}
-        >
-          <motion.div
-            className="couple-photo-frame"
-            whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
-            transition={{ duration: 0.3 }}
+        {/* Photos Row: Perfectly centers the connector between the two photo frames */}
+        <div className="couple-photos-row">
+          {/* Groom Photo */}
+          <ScrollReveal
+            as={motion.div}
+            className="couple-photo-col groom-photo"
+            initial={shouldReduceMotion ? {} : { opacity: 0, x: -35, y: 15 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            threshold={0.15}
           >
-            {!groomImgError && groomSrc ? (
-              <img
-                src={groomSrc}
-                alt={`កូនកំលោះ ${groom.nameKhmer} (${groom.nameEnglish})`}
-                className="couple-photo-img"
-                width="1200"
-                height="1800"
-                decoding="async"
-                onError={handleGroomError}
-                loading="lazy"
+            <div className="couple-photo-frame">
+              {!groomImgError && groomSrc ? (
+                <img
+                  src={groomSrc}
+                  alt={`កូនកំលោះ ${groom.nameKhmer} (${groom.nameEnglish})`}
+                  className="couple-photo-img"
+                  width="1200"
+                  height="1800"
+                  decoding="async"
+                  onError={handleGroomError}
+                  loading="lazy"
+                />
+              ) : (
+                <div className="couple-photo-placeholder" aria-hidden="true">
+                  <span className="placeholder-ornament">❖</span>
+                  <span className="placeholder-initial font-serif">
+                    {groom.initial}
+                  </span>
+                  <span className="placeholder-tag font-khmer">
+                    រូបថតកូនកំលោះ
+                  </span>
+                </div>
+              )}
+              <div className="photo-corner-accent top-left" aria-hidden="true" />
+              <div className="photo-corner-accent top-right" aria-hidden="true" />
+              <div
+                className="photo-corner-accent bottom-left"
+                aria-hidden="true"
               />
-            ) : (
-              <div className="couple-photo-placeholder" aria-hidden="true">
-                <span className="placeholder-ornament">❖</span>
-                <span className="placeholder-initial font-serif">
-                  {groom.initial}
-                </span>
-                <span className="placeholder-tag font-khmer">
-                  រូបថតកូនកំលោះ
-                </span>
-              </div>
-            )}
-            <div className="photo-corner-accent top-left" aria-hidden="true" />
-            <div className="photo-corner-accent top-right" aria-hidden="true" />
-            <div
-              className="photo-corner-accent bottom-left"
-              aria-hidden="true"
-            />
-            <div
-              className="photo-corner-accent bottom-right"
-              aria-hidden="true"
-            />
-          </motion.div>
+              <div
+                className="photo-corner-accent bottom-right"
+                aria-hidden="true"
+              />
+            </div>
+          </ScrollReveal>
 
-          <div className="couple-info">
-            <span className="couple-role-tag font-khmer">កូនប្រុសនាម</span>
-            <span className="couple-role-en font-serif">THE GROOM</span>
-
-            <h3 className="couple-name-kh font-khmer-moul">
-              {groom.nameKhmer}
-            </h3>
-            <p className="couple-name-en font-serif">{groom.nameEnglish}</p>
-          </div>
-        </ScrollReveal>
-
-        {/* Central Monogram Connector */}
-        <ScrollReveal
-          className="couple-connector"
-          aria-hidden="true"
-          initial={shouldReduceMotion ? {} : { scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1.1, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          threshold={0.15}
-        >
-          <div className="connector-line" />
-          <div className="connector-seal">
-            <span className="connector-ampersand font-serif">&amp;</span>
-          </div>
-          <div className="connector-line" />
-        </ScrollReveal>
-
-        {/* Bride Card */}
-        <ScrollReveal
-          as={motion.article}
-          className="couple-card"
-          initial={shouldReduceMotion ? {} : { opacity: 0, x: 40, y: 20 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
-          threshold={0.15}
-        >
-          <motion.div
-            className="couple-photo-frame"
-            whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
-            transition={{ duration: 0.3 }}
+          {/* Central Monogram Connector */}
+          <ScrollReveal
+            className="couple-connector"
+            aria-hidden="true"
+            initial={shouldReduceMotion ? {} : { scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            threshold={0.15}
           >
-            {!brideImgError && brideSrc ? (
-              <img
-                src={brideSrc}
-                alt={`កូនក្រមុំ ${bride.nameKhmer} (${bride.nameEnglish})`}
-                className="couple-photo-img"
-                width="1200"
-                height="1800"
-                decoding="async"
-                onError={handleBrideError}
-                loading="lazy"
+            <div className="connector-line" />
+            <div className="connector-seal">
+              <span className="connector-ampersand font-serif">&amp;</span>
+            </div>
+            <div className="connector-line" />
+          </ScrollReveal>
+
+          {/* Bride Photo */}
+          <ScrollReveal
+            as={motion.div}
+            className="couple-photo-col bride-photo"
+            initial={shouldReduceMotion ? {} : { opacity: 0, x: 35, y: 15 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            threshold={0.15}
+          >
+            <div className="couple-photo-frame">
+              {!brideImgError && brideSrc ? (
+                <img
+                  src={brideSrc}
+                  alt={`កូនក្រមុំ ${bride.nameKhmer} (${bride.nameEnglish})`}
+                  className="couple-photo-img"
+                  width="1200"
+                  height="1800"
+                  decoding="async"
+                  onError={handleBrideError}
+                  loading="lazy"
+                />
+              ) : (
+                <div className="couple-photo-placeholder" aria-hidden="true">
+                  <span className="placeholder-ornament">❖</span>
+                  <span className="placeholder-initial font-serif">
+                    {bride.initial}
+                  </span>
+                  <span className="placeholder-tag font-khmer">
+                    រូបថតកូនក្រមុំ
+                  </span>
+                </div>
+              )}
+              <div className="photo-corner-accent top-left" aria-hidden="true" />
+              <div className="photo-corner-accent top-right" aria-hidden="true" />
+              <div
+                className="photo-corner-accent bottom-left"
+                aria-hidden="true"
               />
-            ) : (
-              <div className="couple-photo-placeholder" aria-hidden="true">
-                <span className="placeholder-ornament">❖</span>
-                <span className="placeholder-initial font-serif">
-                  {bride.initial}
-                </span>
-                <span className="placeholder-tag font-khmer">
-                  រូបថតកូនក្រមុំ
-                </span>
-              </div>
-            )}
-            <div className="photo-corner-accent top-left" aria-hidden="true" />
-            <div className="photo-corner-accent top-right" aria-hidden="true" />
-            <div
-              className="photo-corner-accent bottom-left"
-              aria-hidden="true"
-            />
-            <div
-              className="photo-corner-accent bottom-right"
-              aria-hidden="true"
-            />
-          </motion.div>
+              <div
+                className="photo-corner-accent bottom-right"
+                aria-hidden="true"
+              />
+            </div>
+          </ScrollReveal>
+        </div>
 
-          <div className="couple-info">
-            <span className="couple-role-tag font-khmer">កូនស្រីនាម</span>
-            <span className="couple-role-en font-serif">THE BRIDE</span>
+        {/* Names & Roles Row: Exactly aligned beneath respective photos */}
+        <div className="couple-names-row">
+          <ScrollReveal
+            as={motion.div}
+            className="couple-info-col groom-info"
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            threshold={0.15}
+          >
+            <div className="couple-info">
+              <span className="couple-role-tag font-khmer">កូនប្រុសនាម</span>
+              <span className="couple-role-en font-serif">THE GROOM</span>
 
-            <h3 className="couple-name-kh font-khmer-moul">
-              {bride.nameKhmer}
-            </h3>
-            <p className="couple-name-en font-serif">{bride.nameEnglish}</p>
-          </div>
-        </ScrollReveal>
+              <h3 className="couple-name-kh font-khmer-moul">
+                {groom.nameKhmer}
+              </h3>
+              <p className="couple-name-en font-serif">{groom.nameEnglish}</p>
+            </div>
+          </ScrollReveal>
+
+          <div className="couple-names-spacer" aria-hidden="true" />
+
+          <ScrollReveal
+            as={motion.div}
+            className="couple-info-col bride-info"
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            threshold={0.15}
+          >
+            <div className="couple-info">
+              <span className="couple-role-tag font-khmer">កូនស្រីនាម</span>
+              <span className="couple-role-en font-serif">THE BRIDE</span>
+
+              <h3 className="couple-name-kh font-khmer-moul">
+                {bride.nameKhmer}
+              </h3>
+              <p className="couple-name-en font-serif">{bride.nameEnglish}</p>
+            </div>
+          </ScrollReveal>
+        </div>
       </div>
 
       {/* Reusable Khmer Divider */}

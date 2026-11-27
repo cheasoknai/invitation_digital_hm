@@ -83,16 +83,16 @@ export default function GiftQRCode() {
         threshold={0.15}
       >
         <p className="section-subtitle font-serif">
-          WEDDING GIFT &bull; CHONG DAI
+          WEDDING BLESSINGS
         </p>
         <h2 className="section-title-khmer font-khmer-moul">
-          អំណោយអាពាហ៍ពិពាហ៍ (ចងដៃ)
+          ចំណងដៃ
         </h2>
         <p
           className="section-subtitle font-serif"
           style={{ letterSpacing: "2px" }}
         >
-          BLESSINGS &amp; MONETARY GIFT
+          WEDDING GIFT
         </p>
       </ScrollReveal>
 
@@ -152,7 +152,7 @@ export default function GiftQRCode() {
             <div className="qr-code-placeholder-card" aria-hidden="true">
               <QrCode size={48} className="qr-placeholder-icon" />
               <p className="qr-placeholder-label font-khmer">
-                {giftQR.accountName || "គណនីចងដៃអាពាហ៍ពិពាហ៍"}
+                {giftQR.accountName || "គណនីចំណងដៃអាពាហ៍ពិពាហ៍"}
               </p>
               <p className="qr-placeholder-sub font-serif">
                 QR CODE READY &bull; ABA / KHQR
@@ -217,7 +217,11 @@ export default function GiftQRCode() {
               whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
             >
               <span className="gift-action-icon-circle" aria-hidden="true">
-                {copied ? <Check size={15} color="#4ade80" /> : <Copy size={15} />}
+                {copied ? (
+                  <Check size={15} color="#4ade80" />
+                ) : (
+                  <Copy size={15} />
+                )}
               </span>
               <span className="gift-action-text-wrap">
                 <span className="gift-action-kh font-khmer">

@@ -3,6 +3,9 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { MailOpen, Sparkles, Loader2 } from "lucide-react";
 import invitationData from "../data/invitation.js";
 
+// Helper to determine if a guest name contains Khmer script
+const isKhmerText = (text) => /[\u1780-\u17FF]/.test(text || "");
+
 /**
  * OpeningScreen Component
  * Cinematic 3D Envelope Opening & Romantic Reveal Experience.
@@ -22,66 +25,56 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
   const shouldReduceMotion = useReducedMotion();
   const { couple, date } = invitationData;
 
-  // Animation stages: 'closed' | 'anticipating' | 'opening' | 'revealed' | 'dissolving' | 'opened'
+  // Local isOpening state to coordinate flap fold + card slide-up
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  const [animStage, setAnimStage] = useState(isOpen ? "opened" : "closed");
-  const timersRef = useRef([]);
+  const [isOpening, setIsOpening] = useState(false);
+  const onOpenRef = useRef(onOpen);
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
 
   // Adjust state during render when isOpen prop changes (official React pattern)
   if (prevIsOpen !== isOpen) {
     setPrevIsOpen(isOpen);
-    setAnimStage(isOpen ? "opened" : "closed");
+    if (!isOpen) {
+      setIsOpening(false);
+    }
   }
 
-  // Clear pending timers whenever isOpen prop changes or component unmounts
+  // Clean transition timer: call onOpen() after animation plays (~1300ms)
+  // Uses onOpenRef so parent re-renders (e.g. audio starting) don't cancel the transition timer
   useEffect(() => {
-    return () => {
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current = [];
-    };
-  }, [isOpen]);
+    if (!isOpening || isOpen) return;
+    const timer = setTimeout(() => {
+      onOpenRef.current?.();
+    }, 1300);
+    return () => clearTimeout(timer);
+  }, [isOpening, isOpen]);
 
   const handleStartOpen = () => {
-    if (animStage !== "closed") return;
+    if (isOpening || isOpen) return;
 
     if (shouldReduceMotion) {
-      setAnimStage("opened");
-      onOpen({ complete: true });
+      onOpen?.();
       return;
     }
 
-    // Step 1: Start audio synchronously on user gesture (satisfies iOS/Android autoplay policy)
-    onOpen({ immediateAudioOnly: true });
+    // Step 1: Start audio synchronously on user gesture (satisfies mobile autoplay policy)
+    onOpen?.({ immediateAudioOnly: true });
 
-    // Step 2: Brief anticipation phase (120ms) - seal glows and envelope takes a breath
-    setAnimStage("anticipating");
-
-    const t1 = setTimeout(() => {
-      // Step 3: Trigger 3D flap opening, letter rise, and golden halo
-      setAnimStage("opening");
-    }, 120);
-
-    const t2 = setTimeout(() => {
-      // Step 4: Letter card is fully risen at rest - romantic view pause
-      setAnimStage("revealed");
-    }, 950);
-
-    const t3 = setTimeout(() => {
-      // Step 5: Begin cinematic dissolve and signal main invitation mount
-      setAnimStage("dissolving");
-      onOpen({ complete: true });
-    }, 1350);
-
-    const t4 = setTimeout(() => {
-      // Step 6: Mark transition complete
-      setAnimStage("opened");
-    }, 1850);
-
-    timersRef.current.push(t1, t2, t3, t4);
+    // Step 2: Trigger opening animation
+    setIsOpening(true);
   };
 
-  const isRising = animStage === "opening" || animStage === "revealed" || animStage === "dissolving";
-  const isOpeningOrBeyond = animStage !== "closed" && animStage !== "anticipating";
+  const getLetterCardOffset = () => {
+    if (typeof window === "undefined") return -145;
+    const h = window.innerHeight;
+    const w = window.innerWidth;
+    if (h < 600) return -95;
+    if (h < 700) return -120;
+    if (w <= 480) return -145;
+    return -170;
+  };
 
   return (
     <AnimatePresence>
@@ -99,12 +92,12 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
           aria-label="Wedding Invitation Envelope Cover"
         >
           {/* Realistic 3D Envelope Scene */}
-          <div className="envelope-3d-scene">
+          <div className="envelope-3d-scene envelope-container">
             <motion.div
-              className={`envelope-realistic ${isOpeningOrBeyond ? "is-opening" : ""}`}
+              className={`envelope-realistic ${isOpening ? "is-opening" : ""}`}
               initial={{ scale: 0.96, opacity: 0, y: 16 }}
               animate={
-                animStage === "closed"
+                !isOpening
                   ? {
                       scale: 1,
                       opacity: 1,
@@ -119,9 +112,19 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                         opacity: { duration: 0.5, ease: "easeOut" },
                       },
                     }
-                  : animStage === "anticipating"
-                  ? { scale: 0.99, opacity: 1, y: 2, transition: { duration: 0.12 } }
-                  : { scale: 1, opacity: 1, y: 0, transition: { duration: 0.3 } }
+                  : {
+                      scale: 1,
+                      opacity: 1,
+                      y:
+                        typeof window !== "undefined" &&
+                        window.innerHeight < 680
+                          ? 28
+                          : 0,
+                      transition: {
+                        duration: 0.55,
+                        ease: [0.22, 1, 0.36, 1],
+                      },
+                    }
               }
             >
               {/* Envelope Back Plate with High-Performance CSS Box Shadow */}
@@ -135,41 +138,46 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                 className="envelope-gold-glow"
                 initial={false}
                 animate={
-                  isRising
+                  isOpening
                     ? { opacity: 0.7, scale: 1.1 }
                     : { opacity: 0, scale: 0.8 }
                 }
-                transition={{ duration: 0.6, ease: "easeOut" }}
+                transition={{ delay: 0.25, duration: 0.65, ease: "easeOut" }}
                 aria-hidden="true"
               />
 
               {/* Sliding Luxury Wedding Letter Card */}
               <motion.div
-                className="envelope-letter-card"
+                className={`envelope-letter-card ${isOpening ? "is-sliding" : ""}`}
                 initial={false}
                 animate={
-                  isRising
+                  isOpening
                     ? {
-                        y: typeof window !== "undefined" && window.innerWidth <= 480 ? -145 : -170,
+                        y: getLetterCardOffset(),
+                        opacity: 1,
                         scale: 1.02,
                         transition: {
-                          delay: 0.18,
-                          duration: 0.6,
-                          ease: [0.22, 1, 0.36, 1],
+                          delay: 0.28,
+                          duration: 0.65,
+                          ease: [0.16, 1, 0.3, 1],
                         },
                       }
-                    : { y: 0, scale: 1 }
+                    : { y: 60, opacity: 0, scale: 0.96 }
                 }
               >
                 <div className="letter-card-inner">
-                  <div className="letter-card-monogram font-serif">
-                    {couple.groom.initial} &amp; {couple.bride.initial}
+                  <div className="letter-card-monogram-badge">
+                    <div className="letter-card-monogram font-serif">
+                      <span className="monogram-letter">{couple.groom.initial}</span>
+                      <span className="monogram-ampersand">&amp;</span>
+                      <span className="monogram-letter">{couple.bride.initial}</span>
+                    </div>
                   </div>
                   <div className="letter-card-divider" aria-hidden="true">
                     ✦ ❖ ✦
                   </div>
                   <p className="letter-card-khmer font-khmer-moul">
-                    សិរីសួស្តី អាពាហ៍ពិពាហ៍
+                    សិរីសួស្តីអាពាហ៍ពិពាហ៍
                   </p>
                   <p className="letter-card-couple font-khmer">
                     {couple.groom.nameKhmer} &amp; {couple.bride.nameKhmer}
@@ -177,12 +185,6 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                   <p className="letter-card-couple-en font-serif">
                     {couple.groom.nameEnglish} &amp; {couple.bride.nameEnglish}
                   </p>
-                  {guest?.guest_name && (
-                    <div className="letter-card-guest-badge font-khmer">
-                      <span className="guest-badge-pre">សូមគោរពអញ្ជើញ៖</span>
-                      <span className="guest-badge-name">{guest.guest_name}</span>
-                    </div>
-                  )}
                   <p className="letter-card-date font-serif">
                     {date.displayShortDate}
                   </p>
@@ -191,48 +193,62 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
 
               {/* Hardware-Accelerated 3D Folding Top Flap */}
               <motion.div
-                className={`envelope-top-flap-3d ${isOpeningOrBeyond ? "is-flipped" : ""}`}
+                className={`envelope-top-flap-3d ${isOpening ? "is-open" : ""}`}
                 initial={false}
                 animate={
-                  isOpeningOrBeyond
+                  isOpening
                     ? {
                         rotateX: 180,
+                        zIndex: [5, 5, 1],
                         transition: {
-                          duration: 0.55,
-                          ease: [0.25, 1, 0.5, 1],
+                          rotateX: {
+                            duration: 0.55,
+                            ease: [0.33, 1, 0.68, 1],
+                          },
+                          zIndex: {
+                            duration: 0.55,
+                            times: [0, 0.45, 0.46],
+                          },
                         },
                       }
-                    : { rotateX: 0 }
+                    : { rotateX: 0, zIndex: 5 }
                 }
               >
                 {/* Flap Outer Face (visible when closed) */}
-                <div className="flap-outer-face">
-                  {/* Wax Seal Medallion with Breathing Glow */}
+                <div className="flap-outer-face" />
+
+                {/* Flap Inner Face (gold satin lining visible when flap flips up) */}
+                <div className="flap-inner-face" aria-hidden="true" />
+
+                {/* Wax Seal Medallion with Breathing Glow - centered at envelope-top-flap-3d apex */}
+                <div className="envelope-seal-wrapper">
                   <motion.div
-                    className={`envelope-seal ${animStage === "closed" ? "is-breathing" : ""}`}
+                    className={`envelope-seal ${!isOpening ? "is-breathing" : ""}`}
+                    initial={false}
                     animate={
-                      animStage === "anticipating"
-                        ? { scale: 1.08, opacity: 1 }
-                        : isOpeningOrBeyond
+                      isOpening
                         ? {
-                            scale: 0.6,
+                            scale: 1.1,
                             opacity: 0,
-                            transition: { duration: 0.22, ease: "easeOut" },
+                            transition: { duration: 0.25, ease: "easeOut" },
                           }
                         : { scale: 1, opacity: 1 }
                     }
                     whileHover={
-                      animStage === "closed"
+                      !isOpening && !shouldReduceMotion
                         ? {
                             scale: 1.08,
-                            boxShadow: "0 0 22px rgba(181, 155, 109, 0.8)",
+                            boxShadow: "0 0 24px rgba(181, 155, 109, 0.85)",
                           }
                         : {}
+                    }
+                    whileTap={
+                      !isOpening && !shouldReduceMotion ? { scale: 0.94 } : {}
                     }
                     onClick={handleStartOpen}
                     role="button"
                     tabIndex={0}
-                    aria-label="Click to open wedding invitation"
+                    aria-label="Click wax seal to open wedding invitation"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -240,16 +256,15 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                       }
                     }}
                   >
-                    <span className="seal-motif">❖</span>
-                    <span className="seal-monogram font-serif">
-                      {couple.groom.initial}&amp;{couple.bride.initial}
-                    </span>
-                    <span className="seal-motif">❖</span>
+                    <div className="seal-inner-rim">
+                      <span className="seal-motif top">❖</span>
+                      <span className="seal-monogram font-serif">
+                        {couple.groom.initial}&amp;{couple.bride.initial}
+                      </span>
+                      <span className="seal-motif bottom">❖</span>
+                    </div>
                   </motion.div>
                 </div>
-
-                {/* Flap Inner Face (gold satin lining visible when flap flips up) */}
-                <div className="flap-inner-face" aria-hidden="true" />
               </motion.div>
 
               {/* Envelope Front Pocket (Lower envelope body) */}
@@ -257,46 +272,63 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                 <div className="pocket-fold-bottom">
                   {/* Front Text Branding */}
                   <div className="pocket-content">
-                    {guest?.guest_name ? (
-                      <div className="envelope-guest-card font-khmer">
-                        <span className="envelope-guest-eyebrow font-serif">CORDIALLY INVITED</span>
-                        <h2 className="envelope-guest-name font-khmer-moul">{guest.guest_name}</h2>
-                      </div>
-                    ) : (
-                      <p className="envelope-eyebrow font-serif">
-                        THE WEDDING CELEBRATION
-                      </p>
-                    )}
+                    {/* 1. Auspicious Title */}
                     <h1 className="envelope-title-khmer font-khmer-moul">
-                      សិរីសួស្តី អាពាហ៍ពិពាហ៍
+                      សិរីមង្គលអាពាហ៍ពិពាហ៍
                     </h1>
-                    <p className="envelope-couple-names font-serif">
-                      {couple.groom.nameEnglish} &amp;{" "}
-                      {couple.bride.nameEnglish}
-                    </p>
-                    <p className="envelope-date-preview font-khmer">
-                      {date.displayDateKhmer}
+
+                    {/* 2. Invitation Prefix */}
+                    <p className="envelope-invitation-prefix font-khmer">សូមគោរពអញ្ជើញ</p>
+
+                    {/* 3. Dynamic Guest Name Plaque */}
+                    <div
+                      className="envelope-guest-plaque"
+                      role="region"
+                      aria-label="Personalized Guest Invitation Plaque"
+                    >
+                      <div className="guest-plaque-frame">
+                        <div className="guest-plaque-inner">
+                          <h2
+                            className={`guest-plaque-name ${
+                              isKhmerText(guest?.guest_name || "ភ្ញៀវកិត្តិយស")
+                                ? "is-khmer font-khmer"
+                                : "is-latin font-serif"
+                            } ${(guest?.guest_name || "").length > 20 ? "is-long" : ""}`}
+                          >
+                            {guest?.guest_name || "ភ្ញៀវកិត្តិយស"}
+                          </h2>
+                          <div
+                            className="guest-plaque-divider"
+                            aria-hidden="true"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Static Date in Khmer */}
+                    <p className="envelope-date font-khmer">
+                      ថ្ងៃសុក្រ ទី១៨ ខែធ្នូ ឆ្នាំ២០២៦ វេលាម៉ោង ៥:០០ ល្ងាច
                     </p>
 
-                    {/* Open Button: Luxury Wedding Invitation CTA */}
+                    {/* 6. Open Button: Luxury Wedding Invitation CTA */}
                     <motion.button
                       type="button"
                       className="envelope-open-btn font-serif"
                       onClick={handleStartOpen}
-                      disabled={animStage !== "closed"}
+                      disabled={isOpening}
                       animate={
-                        animStage !== "closed"
+                        isOpening
                           ? { opacity: 0.45, scale: 0.98 }
                           : { opacity: 1, scale: 1 }
                       }
                       transition={{ duration: 0.25 }}
                       aria-label={
-                        animStage !== "closed"
+                        isOpening
                           ? "កំពុងបើកលិខិត Opening invitation"
                           : "បើកលិខិតអញ្ជើញ Open wedding invitation"
                       }
                       whileHover={
-                        animStage === "closed" && !shouldReduceMotion
+                        !isOpening && !shouldReduceMotion
                           ? {
                               y: -2,
                               scale: 1.02,
@@ -304,9 +336,7 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                           : {}
                       }
                       whileTap={
-                        animStage === "closed" && !shouldReduceMotion
-                          ? { scale: 0.98 }
-                          : {}
+                        !isOpening && !shouldReduceMotion ? { scale: 0.98 } : {}
                       }
                     >
                       {/* Left Circular Container: Mail / Loading Icon */}
@@ -314,7 +344,7 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                         className="envelope-btn-icon-circle"
                         aria-hidden="true"
                       >
-                        {animStage !== "closed" ? (
+                        {isOpening ? (
                           <Loader2 size={18} className="envelope-btn-spinner" />
                         ) : (
                           <MailOpen
@@ -327,12 +357,10 @@ export default function OpeningScreen({ isOpen, onOpen, guest }) {
                       {/* Refined Typography Stack */}
                       <span className="envelope-btn-text-wrap">
                         <span className="envelope-btn-khmer font-khmer">
-                          {animStage !== "closed" ? "កំពុងបើក..." : "បើកលិខិត"}
+                          {isOpening ? "កំពុងបើក..." : "បើកលិខិត"}
                         </span>
                         <span className="envelope-btn-english font-serif">
-                          {animStage !== "closed"
-                            ? "OPENING..."
-                            : "OPEN INVITATION"}
+                          {isOpening ? "OPENING..." : "OPEN INVITATION"}
                         </span>
                       </span>
 

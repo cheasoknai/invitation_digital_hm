@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Lock, Mail, ArrowLeft, Loader2, ShieldCheck, Info, Eye, EyeOff } from "lucide-react";
+import {
+  Lock,
+  Mail,
+  ArrowLeft,
+  Loader2,
+  ShieldCheck,
+  Info,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 
 /**
@@ -42,11 +51,11 @@ export default function AdminLogin({ onLoginSuccess }) {
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
           setErrorMsg(
-            "អ៊ីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ (Invalid email or password). សូមពិនិត្យគណនី Admin ក្នុង Supabase Auth។"
+            "អ៊ីមែល ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ (Invalid email or password). សូមពិនិត្យគណនី Admin ក្នុង Supabase Auth។",
           );
         } else if (error.message.includes("Email not confirmed")) {
           setErrorMsg(
-            "អ៊ីមែលមិនទាន់ត្រូវបានបញ្ជាក់ (Email not confirmed). Please confirm your user in Supabase Auth or disable email confirmation in Auth settings."
+            "អ៊ីមែលមិនទាន់ត្រូវបានបញ្ជាក់ (Email not confirmed). Please confirm your user in Supabase Auth or disable email confirmation in Auth settings.",
           );
         } else {
           setErrorMsg(error.message);
@@ -61,7 +70,9 @@ export default function AdminLogin({ onLoginSuccess }) {
         setErrorMsg("No active session returned. Please verify credentials.");
       }
     } catch (err) {
-      setErrorMsg(err.message || "An unexpected error occurred during sign in.");
+      setErrorMsg(
+        err.message || "An unexpected error occurred during sign in.",
+      );
     } finally {
       setLoading(false);
     }
@@ -116,7 +127,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                 className="admin-input font-serif"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@invitation.com"
+                placeholder="onlyadmin@email.com"
                 required
                 autoComplete="username email"
               />
@@ -186,9 +197,17 @@ export default function AdminLogin({ onLoginSuccess }) {
             lineHeight: 1.4,
           }}
         >
-          <Info size={16} style={{ color: "var(--color-gold)", flexShrink: 0, marginTop: "2px" }} />
+          <Info
+            size={16}
+            style={{
+              color: "var(--color-gold)",
+              flexShrink: 0,
+              marginTop: "2px",
+            }}
+          />
           <span>
-            Protected with Supabase Auth &amp; Row Level Security. Only authorized wedding administrators can manage guests.
+            Protected with Supabase Auth &amp; Row Level Security. Only
+            authorized wedding administrators can manage guests.
           </span>
         </div>
 
