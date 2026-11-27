@@ -42,10 +42,10 @@ export default function PhotoGallery() {
   const { gallery } = invitationData;
   const shouldReduceMotion = useReducedMotion();
 
-  // Forward-only row scroll animation synchronizer with lazy scroll entrance
+  // Forward-only row scroll animation synchronizer with intentional lazy scroll delay
   const { rowVisibility, registerRowElement } = useRowScrollAnimation({
-    threshold: 0.08,
-    rootMargin: "0px 0px -30px 0px",
+    threshold: 0.02,
+    rootMargin: "0px 0px -25px 0px",
   });
 
   // State: active photo index in lightbox (null = closed)
@@ -248,9 +248,9 @@ export default function PhotoGallery() {
               transition={
                 isRowVisible
                   ? {
-                      duration: 0.85,
-                      delay: (index % 2) * 0.1,
-                      ease: [0.16, 1, 0.3, 1],
+                      duration: 0.65,
+                      delay: (index % 2) * 0.12 + 0.15,
+                      ease: [0.22, 1, 0.36, 1],
                     }
                   : { duration: 0 }
               }

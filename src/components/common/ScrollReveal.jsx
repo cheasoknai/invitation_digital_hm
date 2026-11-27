@@ -14,13 +14,14 @@ import { useScrollAnimation } from "../../hooks/useScrollAnimation.js";
 export default function ScrollReveal({
   children,
   className = "",
-  initial = { opacity: 0, y: 40 },
+  initial = { opacity: 0, y: 35 },
   animate = { opacity: 1, y: 0 },
-  transition = { duration: 1.6, ease: [0.16, 1, 0.3, 1] },
-  threshold = 0.12,
-  rootMargin = "0px 0px -40px 0px",
+  transition = { duration: 1.25, ease: [0.16, 1, 0.3, 1] },
+  threshold = 0.08,
+  rootMargin = "0px 0px -35px 0px",
   as: Component = motion.div,
   style,
+  delay,
   ...restProps
 }) {
   const shouldReduceMotion = useReducedMotion();
@@ -34,13 +35,28 @@ export default function ScrollReveal({
     );
   }
 
+  // Graceful lazy scrolling delay: ensures sections wait a moment before floating in
+  const baseDelay =
+    delay !== undefined
+      ? delay
+      : transition?.delay !== undefined
+        ? transition.delay
+        : 0.22;
+
+  const effectiveTransition = {
+    duration: 1.25,
+    ease: [0.16, 1, 0.3, 1],
+    ...transition,
+    delay: baseDelay,
+  };
+
   return (
     <Component
       ref={ref}
       className={className}
       initial={initial}
       animate={isVisible ? animate : initial}
-      transition={isVisible ? transition : { duration: 0 }}
+      transition={isVisible ? effectiveTransition : { duration: 0 }}
       style={style}
       {...restProps}
     >
