@@ -2408,7 +2408,6 @@ button {
   border-radius: var(--border-radius-xs);
   outline: none;
   width: 100%;
-  transform: translateZ(0);
 }
 
 .gallery-item-card:focus-visible {

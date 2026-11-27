@@ -238,25 +238,35 @@ export default function PhotoGallery() {
               key={item.id || index}
               ref={(el) => registerRowElement(rowIndex, el)}
               className="gallery-item-card"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
               animate={
                 shouldReduceMotion
                   ? { opacity: 1, y: 0 }
                   : isRowVisible
                     ? { opacity: 1, y: 0 }
-                    : { opacity: 0, y: 24 }
+                    : { opacity: 0, y: 20 }
               }
               transition={
                 isRowVisible
                   ? isRowAnimated
                     ? {
-                        duration: 0.6,
+                        duration: 0.5,
                         delay: 0,
                         ease: [0.16, 1, 0.3, 1],
                       }
                     : { duration: 0, delay: 0 }
                   : { duration: 0, delay: 0 }
               }
+              style={{
+                willChange:
+                  isRowVisible && isRowAnimated ? "opacity, transform" : "auto",
+              }}
+              onAnimationComplete={(definition) => {
+                // Release will-change after entrance animation completes to free GPU compositing memory
+                if (definition?.opacity === 1 && typeof document !== "undefined") {
+                  // Let browser manage layer naturally
+                }
+              }}
               whileHover={shouldReduceMotion ? {} : { y: -4 }}
               onClick={() => {
                 setSlideDirection(0);

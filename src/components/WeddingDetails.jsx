@@ -327,7 +327,7 @@ export default function WeddingDetails() {
         className="section-heading"
         initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
         <h2 className="section-title-khmer font-khmer-moul">
@@ -351,7 +351,7 @@ export default function WeddingDetails() {
         className="date-showcase-card"
         initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
         <div className="date-calendar-badge">
@@ -398,7 +398,7 @@ export default function WeddingDetails() {
           className="luxury-timeline-wrapper"
           initial={shouldReduceMotion ? {} : { opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
           threshold={0.15}
         >
           {/* Date Header inside Timeline Card */}

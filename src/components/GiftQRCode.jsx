@@ -79,7 +79,7 @@ export default function GiftQRCode() {
         className="section-heading"
         initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
         <h2 className="section-title-khmer font-khmer-moul">ចំណងដៃ</h2>
@@ -101,7 +101,7 @@ export default function GiftQRCode() {
         className="gift-qr-card"
         initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
         {/* Gift Icon Medallion */}

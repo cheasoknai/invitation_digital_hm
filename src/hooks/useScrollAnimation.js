@@ -2,14 +2,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useReducedMotion } from "framer-motion";
 
 /**
- * Global Scroll Direction Tracking
- * Tracks whether the user is actively scrolling DOWN or UP.
- * Defaults to 'down' on page initialization.
- * Uses passive listener with 3px deadzone to eliminate micro-jitter.
+ * Global Scroll Direction Tracking with RAF Throttling
+ * Tracks whether user is actively scrolling DOWN or UP.
+ * Throttled via requestAnimationFrame so it executes at most once per display frame.
+ * Uses a 4px deadzone to eliminate micro-jitter and touch noise.
  */
 let currentScrollDirection = "down";
 let lastScrollY = typeof window !== "undefined" ? (window.scrollY || window.pageYOffset || 0) : 0;
 let isScrollListenerAttached = false;
+let rafTicking = false;
 
 function ensureScrollListener() {
   if (typeof window === "undefined" || isScrollListenerAttached) return;
@@ -19,11 +20,17 @@ function ensureScrollListener() {
   window.addEventListener(
     "scroll",
     () => {
-      const currentY = window.scrollY || window.pageYOffset || 0;
-      const delta = currentY - lastScrollY;
-      if (Math.abs(delta) >= 3) {
-        currentScrollDirection = delta > 0 ? "down" : "up";
-        lastScrollY = currentY;
+      if (!rafTicking) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY || window.pageYOffset || 0;
+          const delta = currentY - lastScrollY;
+          if (Math.abs(delta) >= 4) {
+            currentScrollDirection = delta > 0 ? "down" : "up";
+            lastScrollY = currentY;
+          }
+          rafTicking = false;
+        });
+        rafTicking = true;
       }
     },
     { passive: true }
@@ -35,15 +42,51 @@ if (typeof window !== "undefined") {
 }
 
 /**
+ * Shared IntersectionObserver Pool for standard ScrollReveal sections.
+ * Consolidates all ScrollReveal instances sharing the same threshold & rootMargin
+ * into a single IntersectionObserver, reducing active observer count from 20+ down to 1.
+ */
+const observerPool = new Map();
+
+function getSharedObserver(threshold, rootMargin) {
+  const key = `${threshold}_${rootMargin}`;
+  let poolItem = observerPool.get(key);
+
+  if (!poolItem) {
+    const callbacks = new Map();
+    const thresholds = threshold === 0 ? [0] : [0, threshold];
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const cb = callbacks.get(entry.target);
+          if (cb) cb(entry);
+        });
+      },
+      {
+        threshold: thresholds,
+        rootMargin,
+      }
+    );
+
+    poolItem = { observer, callbacks, count: 0 };
+    observerPool.set(key, poolItem);
+  }
+
+  return poolItem;
+}
+
+/**
  * useScrollAnimation Hook
  *
- * Implements SCROLL DIRECTION-AWARE ANIMATION REPLAY:
+ * Implements MAXIMUM LAZY SCROLLING & DIRECTION-AWARE REPLAY:
  * 1. Scrolling DOWN: Triggers entrance animation when element enters the viewport.
  * 2. Scrolling UP: Never triggers entrance animations; elements appear immediately in completed state.
  * 3. Viewport exit: Silently resets animation state when element leaves the viewport completely.
- * 4. Replay: Replays entrance animation every time the user scrolls DOWN into the element.
- * 5. Hysteresis: Enters at threshold, exits only when completely outside the viewport to prevent boundary flicker.
- * 6. Accessibility: Immediately visible with zero motion when prefers-reduced-motion is active.
+ * 4. Downward Replay: Replays entrance animation every time the user scrolls DOWN into the element.
+ * 5. Shared Observer Pool: Reuses a single IntersectionObserver instance across all sections.
+ * 6. Zero Forced Layouts: Uses ratio and clientHeight without triggering DOM reflow.
+ * 7. Accessibility: Immediately visible with zero motion when prefers-reduced-motion is active.
  *
  * @param {Object} options
  * @param {number} [options.threshold=0.08] - Viewport entry threshold (0 to 1)
@@ -68,44 +111,45 @@ export function useScrollAnimation({
     const element = ref.current;
     if (!element) return;
 
-    const thresholds = threshold === 0 ? [0] : [0, threshold];
+    const poolItem = getSharedObserver(threshold, rootMargin);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const rect = entry.boundingClientRect;
-          const windowHeight =
-            window.innerHeight || document.documentElement.clientHeight;
+    const onEntry = (entry) => {
+      const rect = entry.boundingClientRect;
+      const windowHeight =
+        window.innerHeight || document.documentElement.clientHeight;
 
-          // Guard against tall elements whose height exceeds the viewport
-          const entryThreshold =
-            rect.height > windowHeight
-              ? (windowHeight * threshold) / rect.height
-              : threshold;
+      // Guard against tall elements whose height exceeds the viewport
+      const entryThreshold =
+        rect.height > windowHeight
+          ? (windowHeight * threshold) / rect.height
+          : threshold;
 
-          // 1. Element enters viewport
-          if (entry.isIntersecting && entry.intersectionRatio >= entryThreshold) {
-            const isScrollingDown = currentScrollDirection === "down";
-            setShouldAnimate(isScrollingDown);
-            setIsVisible((prev) => (prev ? prev : true));
-          }
-          // 2. Element completely leaves viewport (above or below) -> reset for replay
-          else if (!entry.isIntersecting || entry.intersectionRatio === 0) {
-            setIsVisible((prev) => (!prev ? prev : false));
-            setShouldAnimate(false);
-          }
-        });
-      },
-      {
-        threshold: thresholds,
-        rootMargin,
+      // 1. Element enters viewport
+      if (entry.isIntersecting && entry.intersectionRatio >= entryThreshold) {
+        const isScrollingDown = currentScrollDirection === "down";
+        setShouldAnimate(isScrollingDown);
+        setIsVisible((prev) => (prev ? prev : true));
       }
-    );
+      // 2. Element completely leaves viewport (above or below) -> reset for replay
+      else if (!entry.isIntersecting || entry.intersectionRatio === 0) {
+        setIsVisible((prev) => (!prev ? prev : false));
+        setShouldAnimate(false);
+      }
+    };
 
-    observer.observe(element);
+    poolItem.callbacks.set(element, onEntry);
+    poolItem.observer.observe(element);
+    poolItem.count += 1;
 
     return () => {
-      observer.disconnect();
+      poolItem.callbacks.delete(element);
+      poolItem.observer.unobserve(element);
+      poolItem.count -= 1;
+
+      if (poolItem.count <= 0) {
+        poolItem.observer.disconnect();
+        observerPool.delete(`${threshold}_${rootMargin}`);
+      }
     };
   }, [shouldReduceMotion, threshold, rootMargin]);
 
@@ -114,7 +158,8 @@ export function useScrollAnimation({
 
 /**
  * useRowScrollAnimation Hook
- * Synchronizes row animations across grid items (e.g., photo gallery pairs) with scroll direction awareness.
+ * Synchronizes row animations across PhotoGallery pairs with scroll direction awareness.
+ * Uses a single shared IntersectionObserver to observe all 25 photo items.
  *
  * Requirements:
  * 1. Synchronized: Both images in each pair share the exact same row visibility and direction triggers.
@@ -200,7 +245,7 @@ export function useRowScrollAnimation({
           }
         });
 
-        // Batch row visibility updates
+        // Batch row visibility updates in a single state update
         if (hasVisibilityChanges) {
           setRowVisibility((prev) => {
             let changed = false;
@@ -215,7 +260,7 @@ export function useRowScrollAnimation({
           });
         }
 
-        // Batch row animation direction updates
+        // Batch row animation direction updates in a single state update
         if (hasAnimateChanges) {
           setRowShouldAnimate((prev) => {
             let changed = false;

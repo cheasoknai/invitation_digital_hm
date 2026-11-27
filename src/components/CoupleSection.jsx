@@ -46,7 +46,7 @@ export default function CoupleSection() {
         className="section-heading"
         initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
         <h2 className="section-title-khmer font-khmer-moul">
@@ -75,7 +75,7 @@ export default function CoupleSection() {
             className="couple-photo-col groom-photo"
             initial={shouldReduceMotion ? {} : { opacity: 0, x: -35, y: 15 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
             threshold={0.15}
           >
             <div className="couple-photo-frame">
@@ -120,7 +120,7 @@ export default function CoupleSection() {
             aria-hidden="true"
             initial={shouldReduceMotion ? {} : { scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.75, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             threshold={0.15}
           >
             <div className="connector-line" />
@@ -136,7 +136,7 @@ export default function CoupleSection() {
             className="couple-photo-col bride-photo"
             initial={shouldReduceMotion ? {} : { opacity: 0, x: 35, y: 15 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 1.3, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
             threshold={0.15}
           >
             <div className="couple-photo-frame">
@@ -183,7 +183,7 @@ export default function CoupleSection() {
             className="couple-info-col groom-info"
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             threshold={0.15}
           >
             <div className="couple-info">
@@ -204,7 +204,7 @@ export default function CoupleSection() {
             className="couple-info-col bride-info"
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             threshold={0.15}
           >
             <div className="couple-info">

@@ -180,8 +180,8 @@ export default function App({ guest, onRsvpUpdated }) {
               initial={shouldReduceMotion ? {} : { opacity: 0, y: 35 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                duration: 1.4,
-                delay: 0.2,
+                duration: 0.85,
+                delay: 0.1,
                 ease: [0.16, 1, 0.3, 1],
               }}
               threshold={0.15}
