@@ -91,6 +91,24 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [guestToDelete, deletingId, selectedMobileGuest, isSavingEdit]);
 
+  // Lock background body scroll whenever mobile sheet or delete modal is active
+  useEffect(() => {
+    if (selectedMobileGuest || guestToDelete) {
+      const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
+
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+      document.documentElement.style.overflow = "hidden";
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
+        document.documentElement.style.overflow = "";
+      };
+    }
+  }, [selectedMobileGuest, guestToDelete]);
+
   // 1. Manage Auth Session (Supabase Auth as single source of truth)
   useEffect(() => {
     let isMounted = true;
@@ -1464,7 +1482,7 @@ export default function AdminDashboard() {
             {/* Sheet Header */}
             <div className="mobile-sheet-header">
               <div className="mobile-sheet-header-left">
-                <div className="guest-avatar-circle font-khmer">
+                <div className="mobile-sheet-avatar font-khmer">
                   {(selectedMobileGuest.guest_name || "G")
                     .trim()
                     .charAt(0)
@@ -1474,8 +1492,8 @@ export default function AdminDashboard() {
                   <h3 className="mobile-sheet-guest-name font-khmer">
                     {selectedMobileGuest.guest_name}
                   </h3>
-                  <span className="mobile-sheet-sub font-serif">
-                    GUEST DETAILS &bull; ពត៌មានភ្ញៀវ
+                  <span className="mobile-sheet-sub">
+                    GUEST DETAILS &bull; ព័ត៌មានភ្ញៀវ
                   </span>
                 </div>
               </div>
@@ -1489,7 +1507,7 @@ export default function AdminDashboard() {
                 }}
                 aria-label="Close guest details"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -1514,7 +1532,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="mobile-sheet-field">
-                    <label className="mobile-field-label font-serif">
+                    <label className="mobile-field-label">
                       Custom Slug (/invite/...):
                     </label>
                     <div className="mobile-slug-input-wrap">
@@ -1538,7 +1556,7 @@ export default function AdminDashboard() {
                   <div className="mobile-sheet-edit-actions">
                     <button
                       type="button"
-                      className="mobile-btn-save font-serif"
+                      className="mobile-btn-save"
                       onClick={async () => {
                         await handleSaveEdit(selectedMobileGuest.id);
                         setSelectedMobileGuest((prev) =>
@@ -1569,7 +1587,7 @@ export default function AdminDashboard() {
 
                     <button
                       type="button"
-                      className="mobile-btn-cancel font-serif"
+                      className="mobile-btn-cancel"
                       onClick={() => {
                         setEditingGuest(null);
                         setEditName("");
@@ -1585,13 +1603,13 @@ export default function AdminDashboard() {
                 /* Mobile Guest Detail Display */
                 <>
                   {/* Status & Timing Box */}
-                  <div className="mobile-detail-group">
+                  <div className="mobile-card-section">
                     <div className="mobile-detail-row">
-                      <span className="detail-meta-label font-serif">
+                      <span className="detail-meta-label">
                         RSVP STATUS
                       </span>
                       <span
-                        className={`status-pill status-${selectedMobileGuest.rsvp_status} font-serif`}
+                        className={`status-pill status-${selectedMobileGuest.rsvp_status}`}
                       >
                         {selectedMobileGuest.rsvp_status === "accepted" && (
                           <CheckCircle2 size={13} />
@@ -1603,53 +1621,64 @@ export default function AdminDashboard() {
                           <Clock size={13} />
                         )}
                         <span>
-                          {selectedMobileGuest.rsvp_status.toUpperCase()}
+                          {selectedMobileGuest.rsvp_status === "accepted" && "បានចូលរួម • ATTENDING"}
+                          {selectedMobileGuest.rsvp_status === "declined" && "មិនបានចូលរួម • DECLINED"}
+                          {selectedMobileGuest.rsvp_status === "pending" && "រង់ចាំឆ្លើយតប • PENDING"}
                         </span>
                       </span>
                     </div>
 
                     {selectedMobileGuest.created_at && (
-                      <div className="mobile-detail-row">
-                        <span className="detail-meta-label font-serif">
+                      <div className="mobile-detail-row mobile-date-row">
+                        <span className="detail-meta-label">
                           CREATED DATE
                         </span>
-                        <span className="detail-meta-val font-serif">
-                          {new Date(
-                            selectedMobileGuest.created_at,
-                          ).toLocaleString()}
+                        <span className="detail-meta-val">
+                          {new Date(selectedMobileGuest.created_at).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })}
                         </span>
                       </div>
                     )}
                   </div>
 
                   {/* Personalized Link Box */}
-                  <div className="mobile-detail-group">
-                    <span className="detail-section-title font-serif">
-                      PERSONALIZED INVITATION LINK
-                    </span>
+                  <div className="mobile-card-section">
+                    <div className="section-title-wrap">
+                      <Link2 size={14} className="section-title-icon" />
+                      <span className="detail-section-title">
+                        PERSONALIZED INVITATION LINK
+                      </span>
+                    </div>
+
                     <div className="mobile-slug-preview-box">
-                      <code className="mobile-slug-code font-sans">
-                        /invite/
-                        {selectedMobileGuest.invitation_slug || "(no slug set)"}
-                      </code>
+                      <span className="slug-preview-prefix">/invite/</span>
+                      <span className="slug-preview-name">
+                        {selectedMobileGuest.invitation_slug || "(no-slug)"}
+                      </span>
                     </div>
 
                     <div className="mobile-link-btns-row">
                       <button
                         type="button"
-                        className={`mobile-sheet-link-btn copy font-serif ${copiedId === selectedMobileGuest.id ? "is-copied" : ""}`}
+                        className={`mobile-sheet-link-btn copy ${copiedId === selectedMobileGuest.id ? "is-copied" : ""}`}
                         onClick={() => handleCopyLink(selectedMobileGuest)}
                         disabled={!selectedMobileGuest.invitation_slug}
                       >
                         {copiedId === selectedMobileGuest.id ? (
                           <>
                             <Check size={16} />
-                            <span>COPIED TO CLIPBOARD!</span>
+                            <span>COPIED!</span>
                           </>
                         ) : (
                           <>
                             <Copy size={16} />
-                            <span>COPY INVITATION LINK</span>
+                            <span>COPY LINK</span>
                           </>
                         )}
                       </button>
@@ -1659,7 +1688,7 @@ export default function AdminDashboard() {
                           href={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${encodeURIComponent(selectedMobileGuest.invitation_slug)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mobile-sheet-link-btn open font-serif"
+                          className="mobile-sheet-link-btn open"
                         >
                           <ExternalLink size={16} />
                           <span>OPEN INVITATION</span>
@@ -1669,51 +1698,55 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Message & Blessings Box */}
-                  <div className="mobile-detail-group">
-                    <span className="detail-section-title font-serif">
-                      RSVP MESSAGE &bull; សារជូនពរ
-                    </span>
+                  <div className="mobile-card-section">
+                    <div className="section-title-wrap">
+                      <MessageSquare size={14} className="section-title-icon" />
+                      <span className="detail-section-title">
+                        RSVP MESSAGE &bull; សារជូនពរ
+                      </span>
+                    </div>
                     {selectedMobileGuest.rsvp_message ? (
                       <div className="mobile-message-quote font-khmer">
-                        <MessageSquare size={16} className="quote-icon" />
                         <p className="quote-text">
                           &ldquo;{selectedMobileGuest.rsvp_message}&rdquo;
                         </p>
                       </div>
                     ) : (
-                      <p className="mobile-no-message font-khmer">
-                        មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)
-                      </p>
+                      <div className="mobile-no-message">
+                        <span>មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)</span>
+                      </div>
                     )}
-                  </div>
-
-                  {/* Bottom Action Buttons */}
-                  <div className="mobile-sheet-footer">
-                    <button
-                      type="button"
-                      className="mobile-sheet-footer-btn edit font-serif"
-                      onClick={() => handleStartEdit(selectedMobileGuest)}
-                    >
-                      <Edit2 size={16} />
-                      <span>EDIT GUEST</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="mobile-sheet-footer-btn delete font-serif"
-                      onClick={() => {
-                        const target = selectedMobileGuest;
-                        setSelectedMobileGuest(null);
-                        handleDeleteGuest(target);
-                      }}
-                    >
-                      <Trash2 size={16} />
-                      <span>DELETE GUEST</span>
-                    </button>
                   </div>
                 </>
               )}
             </div>
+
+            {/* Bottom Action Footer */}
+            {editingGuest !== selectedMobileGuest.id && (
+              <div className="mobile-sheet-footer">
+                <button
+                  type="button"
+                  className="mobile-sheet-footer-btn edit"
+                  onClick={() => handleStartEdit(selectedMobileGuest)}
+                >
+                  <Edit2 size={16} />
+                  <span>EDIT GUEST</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="mobile-sheet-footer-btn delete"
+                  onClick={() => {
+                    const target = selectedMobileGuest;
+                    setSelectedMobileGuest(null);
+                    handleDeleteGuest(target);
+                  }}
+                >
+                  <Trash2 size={16} />
+                  <span>DELETE GUEST</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
