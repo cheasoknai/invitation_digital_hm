@@ -3,29 +3,31 @@ import { useScrollAnimation } from "../../hooks/useScrollAnimation.js";
 
 /**
  * ScrollReveal Component
- * Reusable wrapper providing Forward-Only, Repeatable scroll animations across the project.
+ * Reusable wrapper providing Scroll Direction-Aware scroll animations across the project.
  *
  * Requirements satisfied:
- * - TOP -> DOWN: Animate forward smoothly when entering viewport.
- * - DOWN -> TOP: Never animate in reverse. Keep elements visible in completed state.
- * - TOP -> DOWN AGAIN: Replays forward when scrolling down again after being scrolled back above.
+ * - Scrolling DOWN: Triggers entrance animations smoothly.
+ * - Scrolling UP: Never triggers entrance animations; displays immediately in completed state.
+ * - Viewport exit: Resets animation state silently off-screen.
+ * - Downward Replay: Replays entrance animation every time user scrolls DOWN into the element.
  * - Prefers-reduced-motion: Immediately visible with zero animation when enabled.
+ * - Boundary stability: Uses hysteresis to eliminate edge jitter.
  */
 export default function ScrollReveal({
   children,
   className = "",
   initial = { opacity: 0, y: 35 },
   animate = { opacity: 1, y: 0 },
-  transition = { duration: 1.25, ease: [0.16, 1, 0.3, 1] },
+  transition = { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
   threshold = 0.08,
-  rootMargin = "0px 0px -35px 0px",
+  rootMargin = "0px 0px -20px 0px",
   as: Component = motion.div,
   style,
   delay,
   ...restProps
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const [ref, isVisible] = useScrollAnimation({ threshold, rootMargin });
+  const [ref, isVisible, shouldAnimate] = useScrollAnimation({ threshold, rootMargin });
 
   if (shouldReduceMotion) {
     return (
@@ -35,20 +37,10 @@ export default function ScrollReveal({
     );
   }
 
-  // Graceful lazy scrolling delay: ensures sections wait a moment before floating in
-  const baseDelay =
+  const effectiveTransition =
     delay !== undefined
-      ? delay
-      : transition?.delay !== undefined
-        ? transition.delay
-        : 0.22;
-
-  const effectiveTransition = {
-    duration: 1.25,
-    ease: [0.16, 1, 0.3, 1],
-    ...transition,
-    delay: baseDelay,
-  };
+      ? { ...transition, delay }
+      : transition;
 
   return (
     <Component
@@ -56,7 +48,13 @@ export default function ScrollReveal({
       className={className}
       initial={initial}
       animate={isVisible ? animate : initial}
-      transition={isVisible ? effectiveTransition : { duration: 0 }}
+      transition={
+        isVisible
+          ? shouldAnimate
+            ? effectiveTransition
+            : { duration: 0, delay: 0 }
+          : { duration: 0, delay: 0 }
+      }
       style={style}
       {...restProps}
     >

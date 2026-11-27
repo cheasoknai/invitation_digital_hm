@@ -42,10 +42,10 @@ export default function PhotoGallery() {
   const { gallery } = invitationData;
   const shouldReduceMotion = useReducedMotion();
 
-  // Forward-only row scroll animation synchronizer with intentional lazy scroll delay
-  const { rowVisibility, registerRowElement } = useRowScrollAnimation({
+  // Direction-aware row scroll animation synchronizer for synchronized two-image pairs
+  const { rowVisibility, rowShouldAnimate, registerRowElement } = useRowScrollAnimation({
     threshold: 0.02,
-    rootMargin: "0px 0px -25px 0px",
+    rootMargin: "20px 0px 20px 0px",
   });
 
   // State: active photo index in lightbox (null = closed)
@@ -231,28 +231,31 @@ export default function PhotoGallery() {
           );
           const rowIndex = getGalleryRowIndex(index);
           const isRowVisible = Boolean(rowVisibility[rowIndex]);
+          const isRowAnimated = Boolean(rowShouldAnimate[rowIndex]);
 
           return (
             <motion.div
               key={item.id || index}
               ref={(el) => registerRowElement(rowIndex, el)}
               className="gallery-item-card"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
               animate={
                 shouldReduceMotion
                   ? { opacity: 1, y: 0 }
                   : isRowVisible
                     ? { opacity: 1, y: 0 }
-                    : { opacity: 0, y: 20 }
+                    : { opacity: 0, y: 24 }
               }
               transition={
                 isRowVisible
-                  ? {
-                      duration: 0.65,
-                      delay: (index % 2) * 0.12 + 0.15,
-                      ease: [0.22, 1, 0.36, 1],
-                    }
-                  : { duration: 0 }
+                  ? isRowAnimated
+                    ? {
+                        duration: 0.6,
+                        delay: 0,
+                        ease: [0.16, 1, 0.3, 1],
+                      }
+                    : { duration: 0, delay: 0 }
+                  : { duration: 0, delay: 0 }
               }
               whileHover={shouldReduceMotion ? {} : { y: -4 }}
               onClick={() => {
