@@ -27,9 +27,8 @@ export default function InvitationMessage() {
         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         threshold={0.15}
       >
-        <p className="section-subtitle font-serif">OFFICIAL GREETING</p>
         <h2 className="section-title-khmer font-khmer-moul">
-          {message.invitationTitleKhmer || "លិខិតអញ្ជើញអាពាហ៍ពិពាហ៍"}
+          {message.invitationTitleKhmer || "យើងខ្ញុំមានកិត្តិយសសូមគោរពអញ្ជើញ"}
         </h2>
         <p
           className="section-subtitle font-serif"
