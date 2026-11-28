@@ -6476,7 +6476,7 @@ button {
 }
 
 /* ============================================================
-   ADMIN GUEST DETAIL DRAWER (Desktop: Left-side Slide-over)
+   ADMIN GUEST DETAIL DRAWER (Desktop: Right-side Slide-over)
    ============================================================ */
 .admin-detail-drawer-overlay {
   position: fixed;
@@ -6486,7 +6486,7 @@ button {
   -webkit-backdrop-filter: blur(5px);
   z-index: 9999;
   display: flex;
-  justify-content: flex-start; /* DOCKED ON LEFT SIDE */
+  justify-content: flex-end; /* DOCKED ON RIGHT SIDE */
   align-items: stretch;
   overscroll-behavior: contain;
   touch-action: none;
@@ -6498,13 +6498,14 @@ button {
   max-width: 90vw;
   height: 100vh;
   background: #ffffff;
-  border-right: 1.5px solid rgba(181, 155, 109, 0.35);
-  box-shadow: 14px 0 45px rgba(99, 26, 38, 0.22);
-  border-radius: 0 20px 20px 0;
+  border-left: 1.5px solid rgba(181, 155, 109, 0.35);
+  border-right: none;
+  box-shadow: -14px 0 45px rgba(99, 26, 38, 0.22);
+  border-radius: 20px 0 0 20px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: drawerSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: drawerSlideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   touch-action: pan-y;
   overscroll-behavior: contain;
 }
@@ -6937,9 +6938,9 @@ button {
   }
 }
 
-@keyframes drawerSlideInLeft {
+@keyframes drawerSlideInRight {
   from {
-    transform: translateX(-100%);
+    transform: translateX(100%);
   }
   to {
     transform: translateX(0);
@@ -7248,6 +7249,7 @@ button {
     border-top-right-radius: 24px;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+    border-left: none;
     border-right: none;
     width: 100%;
     max-width: 100%;

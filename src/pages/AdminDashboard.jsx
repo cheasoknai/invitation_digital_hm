@@ -83,14 +83,17 @@ export default function AdminDashboard() {
         if (guestToDelete && !deletingId) {
           setGuestToDelete(null);
         } else if (selectedGuest && !isSavingEdit) {
-          setSelectedGuest(null);
-          setEditingGuest(null);
+          if (editingGuest) {
+            setEditingGuest(null);
+          } else {
+            setSelectedGuest(null);
+          }
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [guestToDelete, deletingId, selectedGuest, isSavingEdit]);
+  }, [guestToDelete, deletingId, selectedGuest, editingGuest, isSavingEdit]);
 
   // Lock background body scroll whenever detail drawer or delete modal is active
   useEffect(() => {
@@ -852,8 +855,8 @@ export default function AdminDashboard() {
               </div>
             </div>
             <p className="add-guest-hint font-khmer">
-              បញ្ចូលឈ្មោះភ្ញៀវជាភាសាខ្មែរ ឬអង់គ្លេស ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់{" "}
-              <code className="hint-slug-code">/invite/guestname</code>{" "}
+              បញ្ចូលឈ្មោះអង់គ្លេស ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់
+              <code className="hint-slug-code">/invite/guestname</code>
               ជូនដោយស្វ័យប្រវត្តិ។
             </p>
           </div>
@@ -1053,7 +1056,10 @@ export default function AdminDashboard() {
                 <tbody>
                   {loadingGuests && guests.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="admin-table-loading font-khmer">
+                      <td
+                        colSpan={5}
+                        className="admin-table-loading font-khmer"
+                      >
                         <div
                           style={{
                             display: "flex",
@@ -1064,7 +1070,9 @@ export default function AdminDashboard() {
                           }}
                         >
                           <Loader2 size={24} className="spinner-icon" />
-                          <span>កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)</span>
+                          <span>
+                            កំពុងទាញយកបញ្ជីភ្ញៀវ... (Loading guests...)
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -1084,9 +1092,9 @@ export default function AdminDashboard() {
                             ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
                           </p>
                           <span className="empty-state-sub-en font-serif">
-                            No guests found. Use the &ldquo;ADD GUEST&rdquo; form
-                            above to add a guest and generate their personalized
-                            link.
+                            No guests found. Use the &ldquo;ADD GUEST&rdquo;
+                            form above to add a guest and generate their
+                            personalized link.
                           </span>
                         </div>
                       </td>
@@ -1116,7 +1124,7 @@ export default function AdminDashboard() {
                             setSelectedGuest(guest);
                             setEditingGuest(null);
                           }}
-                          title="Click to view details on left side"
+                          title="Click to view guest details"
                         >
                           {/* Guest Name Column */}
                           <td className="guest-name-cell">
@@ -1133,7 +1141,9 @@ export default function AdminDashboard() {
                                     type="text"
                                     className="inline-edit-input font-khmer"
                                     value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
+                                    onChange={(e) =>
+                                      setEditName(e.target.value)
+                                    }
                                     autoFocus
                                     disabled={isSavingEdit}
                                     maxLength={150}
@@ -1154,7 +1164,9 @@ export default function AdminDashboard() {
                                       placeholder="custom-slug"
                                       value={editSlug}
                                       onChange={(e) =>
-                                        setEditSlug(normalizeSlug(e.target.value))
+                                        setEditSlug(
+                                          normalizeSlug(e.target.value),
+                                        )
                                       }
                                       disabled={isSavingEdit}
                                       maxLength={60}
@@ -1301,7 +1313,7 @@ export default function AdminDashboard() {
                                 setSelectedGuest(guest);
                                 setEditingGuest(null);
                               }}
-                              title="View Details on Left Side"
+                              title="View Details"
                             >
                               <Eye size={15} />
                             </button>
@@ -1356,16 +1368,15 @@ export default function AdminDashboard() {
                 <div className="empty-state-icon-wrap">
                   <Users size={32} />
                 </div>
-                <h3 className="empty-state-title">
-                  រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ
-                </h3>
+                <h3 className="empty-state-title">រកមិនឃើញភ្ញៀវក្នុងបញ្ជីទេ</h3>
                 <p className="empty-state-sub-khmer">
                   សូមបញ្ចូលឈ្មោះភ្ញៀវក្នុងប្រអប់
                   &ldquo;បន្ថែមភ្ញៀវកិត្តិយសថ្មី&rdquo; ខាងលើ
                   ដើម្បីបង្កើតតំណភ្ជាប់លិខិតអញ្ជើញ។
                 </p>
                 <span className="empty-state-sub-en font-serif">
-                  No guests found. Use the &ldquo;ADD GUEST&rdquo; form above to add a guest and generate their personalized link.
+                  No guests found. Use the &ldquo;ADD GUEST&rdquo; form above to
+                  add a guest and generate their personalized link.
                 </span>
               </div>
             ) : (
@@ -1373,9 +1384,7 @@ export default function AdminDashboard() {
                 {filteredGuests.map((guest) => {
                   const isCopied = copiedId === guest.id;
                   const origin =
-                    typeof window !== "undefined"
-                      ? window.location.origin
-                      : "";
+                    typeof window !== "undefined" ? window.location.origin : "";
                   const slug = guest.invitation_slug || "";
                   const inviteUrl = slug
                     ? `${origin}/invite/${encodeURIComponent(slug)}`
@@ -1437,7 +1446,10 @@ export default function AdminDashboard() {
 
                       {guest.rsvp_message && (
                         <div className="mobile-card-message font-khmer">
-                          <MessageSquare size={13} className="mobile-msg-icon" />
+                          <MessageSquare
+                            size={13}
+                            className="mobile-msg-icon"
+                          />
                           <p className="mobile-msg-text">
                             &ldquo;{guest.rsvp_message}&rdquo;
                           </p>
@@ -1647,9 +1659,7 @@ export default function AdminDashboard() {
                   {/* Status & Timing Box */}
                   <div className="drawer-card-section">
                     <div className="drawer-detail-row">
-                      <span className="detail-meta-label">
-                        RSVP STATUS
-                      </span>
+                      <span className="detail-meta-label">RSVP STATUS</span>
                       <span
                         className={`status-pill status-${selectedGuest.rsvp_status}`}
                       >
@@ -1663,27 +1673,31 @@ export default function AdminDashboard() {
                           <Clock size={13} />
                         )}
                         <span>
-                          {selectedGuest.rsvp_status === "accepted" && "បានចូលរួម • ATTENDING"}
-                          {selectedGuest.rsvp_status === "declined" && "មិនបានចូលរួម • DECLINED"}
-                          {selectedGuest.rsvp_status === "pending" && "រង់ចាំឆ្លើយតប • PENDING"}
+                          {selectedGuest.rsvp_status === "accepted" &&
+                            "បានចូលរួម • ATTENDING"}
+                          {selectedGuest.rsvp_status === "declined" &&
+                            "មិនបានចូលរួម • DECLINED"}
+                          {selectedGuest.rsvp_status === "pending" &&
+                            "រង់ចាំឆ្លើយតប • PENDING"}
                         </span>
                       </span>
                     </div>
 
                     {selectedGuest.created_at && (
                       <div className="drawer-detail-row drawer-date-row">
-                        <span className="detail-meta-label">
-                          CREATED DATE
-                        </span>
+                        <span className="detail-meta-label">CREATED DATE</span>
                         <span className="detail-meta-val">
-                          {new Date(selectedGuest.created_at).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
+                          {new Date(selectedGuest.created_at).toLocaleString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            },
+                          )}
                         </span>
                       </div>
                     )}
@@ -1755,7 +1769,9 @@ export default function AdminDashboard() {
                       </div>
                     ) : (
                       <div className="drawer-no-message">
-                        <span>មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)</span>
+                        <span>
+                          មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)
+                        </span>
                       </div>
                     )}
                   </div>
