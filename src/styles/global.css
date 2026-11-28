@@ -6991,19 +6991,54 @@ button {
     gap: 1rem;
   }
 
-  /* Mobile Stats Grid */
+  /* Mobile Stats Grid: 2x2 Grid (4 card boxes: 2 columns x 2 rows) */
   .admin-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px;
   }
 
   .admin-stat-card {
-    padding: 0.85rem;
-    gap: 8px;
+    padding: 0.85rem 0.75rem;
+    gap: 10px;
+    min-width: 0;
+    border-radius: 12px;
+  }
+
+  .stat-card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .stat-card-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .stat-card-info {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .stat-card-label-khmer {
+    font-size: 0.78rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+
+  .stat-card-label-en {
+    font-size: 0.58rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .stat-card-num {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
+    line-height: 1.1;
+    margin-top: 1px;
   }
 
   /* Mobile Add Guest Card */
@@ -7324,11 +7359,5 @@ button {
     to {
       transform: translateY(0);
     }
-  }
-}
-
-@media (max-width: 480px) {
-  .admin-stats-grid {
-    grid-template-columns: 1fr;
   }
 }
