@@ -6570,11 +6570,11 @@ button {
 }
 
 .drawer-sub {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-family: var(--font-khmer), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--color-gold);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
+  line-height: 1.35;
 }
 
 .drawer-close-btn {
@@ -6639,13 +6639,36 @@ button {
   border-top: 1px dashed rgba(181, 155, 109, 0.25);
 }
 
-.detail-meta-label {
-  font-size: 0.72rem;
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.section-title-icon {
+  color: var(--color-gold);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-section-title {
+  font-family: var(--font-khmer), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #8b7964;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
+  line-height: 1.35;
+}
+
+.detail-meta-label {
+  font-family: var(--font-khmer), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8b7964;
   flex-shrink: 0;
+  line-height: 1.35;
 }
 
 .detail-meta-val {
@@ -6686,12 +6709,12 @@ button {
 }
 
 .drawer-link-btn {
+  font-family: var(--font-khmer), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   flex: 1;
   min-height: 44px;
   border-radius: 10px;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
   text-decoration: none;
   cursor: pointer;
   display: inline-flex;
@@ -6760,8 +6783,9 @@ button {
   background: #ffffff;
   border-radius: 8px;
   color: #9ca3af;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-style: italic;
+  font-family: var(--font-khmer), sans-serif;
 }
 
 /* Drawer Footer */
@@ -6775,6 +6799,7 @@ button {
 }
 
 .drawer-footer-btn {
+  font-family: var(--font-khmer), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   flex: 1;
   display: flex;
   align-items: center;
@@ -6782,7 +6807,7 @@ button {
   gap: 8px;
   min-height: 44px;
   border-radius: 10px;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   border: 1.5px solid transparent;
@@ -7331,7 +7356,8 @@ button {
   }
 
   .drawer-sub {
-    font-size: 0.68rem;
+    font-size: 0.74rem;
+    line-height: 1.35;
   }
 
   .drawer-panel-body {

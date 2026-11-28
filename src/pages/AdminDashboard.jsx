@@ -1542,8 +1542,8 @@ export default function AdminDashboard() {
                   <h3 className="drawer-guest-name font-khmer">
                     {selectedGuest.guest_name}
                   </h3>
-                  <span className="drawer-sub">
-                    GUEST DETAILS &bull; ព័ត៌មានភ្ញៀវ
+                  <span className="drawer-sub font-khmer">
+                    ព័ត៌មានលម្អិតអំពីភ្ញៀវ
                   </span>
                 </div>
               </div>
@@ -1656,7 +1656,7 @@ export default function AdminDashboard() {
                   {/* Status & Timing Box */}
                   <div className="drawer-card-section">
                     <div className="drawer-detail-row">
-                      <span className="detail-meta-label">RSVP STATUS</span>
+                      <span className="detail-meta-label font-khmer">ស្ថានភាពឆ្លើយតប</span>
                       <span
                         className={`status-pill status-${selectedGuest.rsvp_status}`}
                       >
@@ -1669,21 +1669,20 @@ export default function AdminDashboard() {
                         {selectedGuest.rsvp_status === "pending" && (
                           <Clock size={13} />
                         )}
-                        <span>
-                          {selectedGuest.rsvp_status === "accepted" &&
-                            "បានចូលរួម • ATTENDING"}
-                          {selectedGuest.rsvp_status === "declined" &&
-                            "មិនបានចូលរួម • DECLINED"}
-                          {selectedGuest.rsvp_status === "pending" &&
-                            "រង់ចាំឆ្លើយតប • PENDING"}
+                        <span className="font-khmer">
+                          {selectedGuest.rsvp_status === "accepted" && "បានចូលរួម"}
+                          {selectedGuest.rsvp_status === "declined" && "មិនបានចូលរួម"}
+                          {selectedGuest.rsvp_status === "pending" && "រង់ចាំឆ្លើយតប"}
+                          {!["accepted", "declined", "pending"].includes(selectedGuest.rsvp_status) &&
+                            (selectedGuest.rsvp_status || "រង់ចាំ")}
                         </span>
                       </span>
                     </div>
 
                     {selectedGuest.created_at && (
                       <div className="drawer-detail-row drawer-date-row">
-                        <span className="detail-meta-label">CREATED DATE</span>
-                        <span className="detail-meta-val">
+                        <span className="detail-meta-label font-khmer">កាលបរិច្ឆេទបង្កើត</span>
+                        <span className="detail-meta-val font-sans">
                           {new Date(selectedGuest.created_at).toLocaleString(
                             "en-US",
                             {
@@ -1703,15 +1702,15 @@ export default function AdminDashboard() {
                   {/* Personalized Link Box */}
                   <div className="drawer-card-section">
                     <div className="section-title-wrap">
-                      <Link2 size={14} className="section-title-icon" />
-                      <span className="detail-section-title">
-                        PERSONALIZED INVITATION LINK
+                      <Link2 size={15} className="section-title-icon" />
+                      <span className="detail-section-title font-khmer">
+                        តំណភ្ជាប់លិខិតអញ្ជើញ
                       </span>
                     </div>
 
                     <div className="drawer-slug-preview-box">
                       <span className="slug-preview-prefix">/invite/</span>
-                      <span className="slug-preview-name">
+                      <span className="slug-preview-name font-sans">
                         {selectedGuest.invitation_slug || "(no-slug)"}
                       </span>
                     </div>
@@ -1719,19 +1718,19 @@ export default function AdminDashboard() {
                     <div className="drawer-link-btns-row">
                       <button
                         type="button"
-                        className={`drawer-link-btn copy ${copiedId === selectedGuest.id ? "is-copied" : ""}`}
+                        className={`drawer-link-btn copy font-khmer ${copiedId === selectedGuest.id ? "is-copied" : ""}`}
                         onClick={() => handleCopyLink(selectedGuest)}
                         disabled={!selectedGuest.invitation_slug}
                       >
                         {copiedId === selectedGuest.id ? (
                           <>
                             <Check size={16} />
-                            <span>COPIED!</span>
+                            <span>បានចម្លងរួចរាល់!</span>
                           </>
                         ) : (
                           <>
                             <Copy size={16} />
-                            <span>COPY LINK</span>
+                            <span>ចម្លងតំណភ្ជាប់</span>
                           </>
                         )}
                       </button>
@@ -1741,10 +1740,10 @@ export default function AdminDashboard() {
                           href={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${encodeURIComponent(selectedGuest.invitation_slug)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="drawer-link-btn open"
+                          className="drawer-link-btn open font-khmer"
                         >
                           <ExternalLink size={16} />
-                          <span>OPEN INVITATION</span>
+                          <span>បើកមើលលិខិតអញ្ជើញ</span>
                         </a>
                       )}
                     </div>
@@ -1753,9 +1752,9 @@ export default function AdminDashboard() {
                   {/* Message & Blessings Box */}
                   <div className="drawer-card-section">
                     <div className="section-title-wrap">
-                      <MessageSquare size={14} className="section-title-icon" />
-                      <span className="detail-section-title">
-                        RSVP MESSAGE &bull; សារជូនពរ
+                      <MessageSquare size={15} className="section-title-icon" />
+                      <span className="detail-section-title font-khmer">
+                        សារជូនពរពីភ្ញៀវ
                       </span>
                     </div>
                     {selectedGuest.rsvp_message ? (
@@ -1765,10 +1764,8 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                     ) : (
-                      <div className="drawer-no-message">
-                        <span>
-                          មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)
-                        </span>
+                      <div className="drawer-no-message font-khmer">
+                        <span>មិនទាន់មានសារជូនពរនៅឡើយទេ</span>
                       </div>
                     )}
                   </div>
@@ -1781,16 +1778,16 @@ export default function AdminDashboard() {
               <div className="drawer-panel-footer">
                 <button
                   type="button"
-                  className="drawer-footer-btn edit"
+                  className="drawer-footer-btn edit font-khmer"
                   onClick={() => handleStartEdit(selectedGuest)}
                 >
                   <Edit2 size={16} />
-                  <span>EDIT GUEST</span>
+                  <span>កែប្រែព័ត៌មាន</span>
                 </button>
 
                 <button
                   type="button"
-                  className="drawer-footer-btn delete"
+                  className="drawer-footer-btn delete font-khmer"
                   onClick={() => {
                     const target = selectedGuest;
                     setSelectedGuest(null);
@@ -1798,7 +1795,7 @@ export default function AdminDashboard() {
                   }}
                 >
                   <Trash2 size={16} />
-                  <span>DELETE GUEST</span>
+                  <span>លុបភ្ញៀវ</span>
                 </button>
               </div>
             )}
