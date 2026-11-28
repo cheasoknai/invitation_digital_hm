@@ -19,6 +19,7 @@ import {
   X,
   ChevronRight,
   MessageSquare,
+  Eye,
 } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import {
@@ -72,8 +73,8 @@ export default function AdminDashboard() {
   // Selected guest for custom Delete Confirmation Dialog (null when closed)
   const [guestToDelete, setGuestToDelete] = useState(null);
 
-  // Selected guest for Mobile Bottom Sheet / Detail View (null when closed)
-  const [selectedMobileGuest, setSelectedMobileGuest] = useState(null);
+  // Selected guest for Detail View (Left-side Drawer on Desktop, Bottom Sheet on Mobile)
+  const [selectedGuest, setSelectedGuest] = useState(null);
 
   // Close modals on Escape key press
   useEffect(() => {
@@ -81,19 +82,19 @@ export default function AdminDashboard() {
       if (e.key === "Escape") {
         if (guestToDelete && !deletingId) {
           setGuestToDelete(null);
-        } else if (selectedMobileGuest && !isSavingEdit) {
-          setSelectedMobileGuest(null);
+        } else if (selectedGuest && !isSavingEdit) {
+          setSelectedGuest(null);
           setEditingGuest(null);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [guestToDelete, deletingId, selectedMobileGuest, isSavingEdit]);
+  }, [guestToDelete, deletingId, selectedGuest, isSavingEdit]);
 
-  // Lock background body scroll whenever mobile sheet or delete modal is active
+  // Lock background body scroll whenever detail drawer or delete modal is active
   useEffect(() => {
-    if (selectedMobileGuest || guestToDelete) {
+    if (selectedGuest || guestToDelete) {
       const originalOverflow = document.body.style.overflow;
       const originalTouchAction = document.body.style.touchAction;
 
@@ -107,7 +108,7 @@ export default function AdminDashboard() {
         document.documentElement.style.overflow = "";
       };
     }
-  }, [selectedMobileGuest, guestToDelete]);
+  }, [selectedGuest, guestToDelete]);
 
   // 1. Manage Auth Session (Supabase Auth as single source of truth)
   useEffect(() => {
@@ -482,6 +483,9 @@ export default function AdminDashboard() {
 
       // Only update state after database confirms deletion
       setGuests((prev) => prev.filter((g) => g.id !== guestToDelete.id));
+      if (selectedGuest?.id === guestToDelete.id) {
+        setSelectedGuest(null);
+      }
       setGuestToDelete(null);
     } catch (err) {
       console.error("Exception in handleConfirmDelete:", err);
@@ -587,7 +591,7 @@ export default function AdminDashboard() {
         ),
       );
 
-      setSelectedMobileGuest((prev) =>
+      setSelectedGuest((prev) =>
         prev && prev.id === guestId
           ? {
               ...prev,
@@ -1105,11 +1109,22 @@ export default function AdminDashboard() {
                         .toUpperCase();
 
                       return (
-                        <tr key={guest.id} className="admin-guest-row">
+                        <tr
+                          key={guest.id}
+                          className={`admin-guest-row ${selectedGuest?.id === guest.id ? "is-selected-row" : ""}`}
+                          onClick={() => {
+                            setSelectedGuest(guest);
+                            setEditingGuest(null);
+                          }}
+                          title="Click to view details on left side"
+                        >
                           {/* Guest Name Column */}
                           <td className="guest-name-cell">
                             {isEditing ? (
-                              <div className="inline-edit-wrap">
+                              <div
+                                className="inline-edit-wrap"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="inline-edit-field">
                                   <label className="inline-edit-label font-khmer">
                                     ឈ្មោះភ្ញៀវ / Guest Name:
@@ -1223,7 +1238,10 @@ export default function AdminDashboard() {
                               <button
                                 type="button"
                                 className={`copy-link-btn ${isCopied ? "is-copied" : ""}`}
-                                onClick={() => handleCopyLink(guest)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopyLink(guest);
+                                }}
                                 disabled={!slug}
                                 title={
                                   slug
@@ -1250,6 +1268,7 @@ export default function AdminDashboard() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="open-link-icon-btn"
+                                  onClick={(e) => e.stopPropagation()}
                                   title="Open personalized invitation"
                                 >
                                   <ExternalLink size={14} />
@@ -1276,8 +1295,24 @@ export default function AdminDashboard() {
                           <td className="guest-actions-cell">
                             <button
                               type="button"
+                              className="action-icon-btn view-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedGuest(guest);
+                                setEditingGuest(null);
+                              }}
+                              title="View Details on Left Side"
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <span> | </span>
+                            <button
+                              type="button"
                               className="action-icon-btn edit-btn"
-                              onClick={() => handleStartEdit(guest)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(guest);
+                              }}
                               title="Edit Guest Name"
                             >
                               <Edit2 size={15} />
@@ -1286,7 +1321,10 @@ export default function AdminDashboard() {
                             <button
                               type="button"
                               className="action-icon-btn delete-btn"
-                              onClick={() => handleDeleteGuest(guest)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteGuest(guest);
+                              }}
                               disabled={deletingId === guest.id}
                               title="Delete Guest"
                             >
@@ -1352,7 +1390,7 @@ export default function AdminDashboard() {
                       key={guest.id}
                       className="admin-mobile-guest-card"
                       onClick={() => {
-                        setSelectedMobileGuest(guest);
+                        setSelectedGuest(guest);
                         setEditingGuest(null);
                         setEditName("");
                         setEditSlug("");
@@ -1362,7 +1400,7 @@ export default function AdminDashboard() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setSelectedMobileGuest(guest);
+                          setSelectedGuest(guest);
                         }
                       }}
                     >
@@ -1438,7 +1476,7 @@ export default function AdminDashboard() {
                           type="button"
                           className="mobile-card-btn details-btn"
                           onClick={() => {
-                            setSelectedMobileGuest(guest);
+                            setSelectedGuest(guest);
                             setEditingGuest(null);
                             setEditName("");
                             setEditSlug("");
@@ -1458,41 +1496,44 @@ export default function AdminDashboard() {
         </section>
       </main>
 
-      {/* Mobile Guest Detail Bottom Sheet (Active on Mobile card tap) */}
-      {selectedMobileGuest && (
+      {/* Guest Detail View: Slide-in Drawer on the LEFT for Desktop, Bottom Sheet for Mobile */}
+      {selectedGuest && (
         <div
-          className="mobile-sheet-overlay"
+          className="admin-detail-drawer-overlay"
           onClick={() => {
-            setSelectedMobileGuest(null);
+            setSelectedGuest(null);
             setEditingGuest(null);
+          }}
+          onTouchMove={(e) => {
+            if (e.target === e.currentTarget) e.preventDefault();
           }}
           role="dialog"
           aria-modal="true"
           aria-label="Guest details"
         >
           <div
-            className="mobile-sheet-container"
+            className="admin-detail-drawer-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Handle Bar */}
+            {/* Mobile Drag Handle Bar */}
             <div className="mobile-sheet-handle-bar" aria-hidden="true">
               <span className="mobile-sheet-drag-handle" />
             </div>
 
-            {/* Sheet Header */}
-            <div className="mobile-sheet-header">
-              <div className="mobile-sheet-header-left">
-                <div className="mobile-sheet-avatar font-khmer">
-                  {(selectedMobileGuest.guest_name || "G")
+            {/* Drawer Header */}
+            <div className="drawer-panel-header">
+              <div className="drawer-header-left">
+                <div className="drawer-avatar font-khmer">
+                  {(selectedGuest.guest_name || "G")
                     .trim()
                     .charAt(0)
                     .toUpperCase()}
                 </div>
-                <div className="mobile-sheet-header-text">
-                  <h3 className="mobile-sheet-guest-name font-khmer">
-                    {selectedMobileGuest.guest_name}
+                <div className="drawer-header-text">
+                  <h3 className="drawer-guest-name font-khmer">
+                    {selectedGuest.guest_name}
                   </h3>
-                  <span className="mobile-sheet-sub">
+                  <span className="drawer-sub">
                     GUEST DETAILS &bull; ព័ត៌មានភ្ញៀវ
                   </span>
                 </div>
@@ -1500,29 +1541,30 @@ export default function AdminDashboard() {
 
               <button
                 type="button"
-                className="mobile-sheet-close-btn"
+                className="drawer-close-btn"
                 onClick={() => {
-                  setSelectedMobileGuest(null);
+                  setSelectedGuest(null);
                   setEditingGuest(null);
                 }}
                 aria-label="Close guest details"
+                title="Close (Escape)"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Sheet Body */}
-            <div className="mobile-sheet-body">
-              {editingGuest === selectedMobileGuest.id ? (
-                /* Mobile Inline Edit Form inside Bottom Sheet */
-                <div className="mobile-sheet-edit-box">
-                  <div className="mobile-sheet-field">
-                    <label className="mobile-field-label font-khmer">
+            {/* Drawer Body */}
+            <div className="drawer-panel-body">
+              {editingGuest === selectedGuest.id ? (
+                /* Inline Edit Form inside Drawer */
+                <div className="drawer-edit-box">
+                  <div className="drawer-field">
+                    <label className="drawer-field-label font-khmer">
                       ឈ្មោះភ្ញៀវ / Guest Name:
                     </label>
                     <input
                       type="text"
-                      className="mobile-sheet-input font-khmer"
+                      className="drawer-input font-khmer"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       autoFocus
@@ -1531,17 +1573,17 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  <div className="mobile-sheet-field">
-                    <label className="mobile-field-label">
+                  <div className="drawer-field">
+                    <label className="drawer-field-label">
                       Custom Slug (/invite/...):
                     </label>
-                    <div className="mobile-slug-input-wrap">
+                    <div className="drawer-slug-input-wrap">
                       <span className="slug-input-prefix font-sans">
                         /invite/
                       </span>
                       <input
                         type="text"
-                        className="mobile-sheet-slug-input font-sans"
+                        className="drawer-slug-input font-sans"
                         placeholder="custom-slug"
                         value={editSlug}
                         onChange={(e) =>
@@ -1553,13 +1595,13 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="mobile-sheet-edit-actions">
+                  <div className="drawer-edit-actions">
                     <button
                       type="button"
-                      className="mobile-btn-save"
+                      className="drawer-btn-save"
                       onClick={async () => {
-                        await handleSaveEdit(selectedMobileGuest.id);
-                        setSelectedMobileGuest((prev) =>
+                        await handleSaveEdit(selectedGuest.id);
+                        setSelectedGuest((prev) =>
                           prev
                             ? {
                                 ...prev,
@@ -1587,7 +1629,7 @@ export default function AdminDashboard() {
 
                     <button
                       type="button"
-                      className="mobile-btn-cancel"
+                      className="drawer-btn-cancel"
                       onClick={() => {
                         setEditingGuest(null);
                         setEditName("");
@@ -1600,41 +1642,41 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ) : (
-                /* Mobile Guest Detail Display */
+                /* Guest Detail Cards */
                 <>
                   {/* Status & Timing Box */}
-                  <div className="mobile-card-section">
-                    <div className="mobile-detail-row">
+                  <div className="drawer-card-section">
+                    <div className="drawer-detail-row">
                       <span className="detail-meta-label">
                         RSVP STATUS
                       </span>
                       <span
-                        className={`status-pill status-${selectedMobileGuest.rsvp_status}`}
+                        className={`status-pill status-${selectedGuest.rsvp_status}`}
                       >
-                        {selectedMobileGuest.rsvp_status === "accepted" && (
+                        {selectedGuest.rsvp_status === "accepted" && (
                           <CheckCircle2 size={13} />
                         )}
-                        {selectedMobileGuest.rsvp_status === "declined" && (
+                        {selectedGuest.rsvp_status === "declined" && (
                           <XCircle size={13} />
                         )}
-                        {selectedMobileGuest.rsvp_status === "pending" && (
+                        {selectedGuest.rsvp_status === "pending" && (
                           <Clock size={13} />
                         )}
                         <span>
-                          {selectedMobileGuest.rsvp_status === "accepted" && "បានចូលរួម • ATTENDING"}
-                          {selectedMobileGuest.rsvp_status === "declined" && "មិនបានចូលរួម • DECLINED"}
-                          {selectedMobileGuest.rsvp_status === "pending" && "រង់ចាំឆ្លើយតប • PENDING"}
+                          {selectedGuest.rsvp_status === "accepted" && "បានចូលរួម • ATTENDING"}
+                          {selectedGuest.rsvp_status === "declined" && "មិនបានចូលរួម • DECLINED"}
+                          {selectedGuest.rsvp_status === "pending" && "រង់ចាំឆ្លើយតប • PENDING"}
                         </span>
                       </span>
                     </div>
 
-                    {selectedMobileGuest.created_at && (
-                      <div className="mobile-detail-row mobile-date-row">
+                    {selectedGuest.created_at && (
+                      <div className="drawer-detail-row drawer-date-row">
                         <span className="detail-meta-label">
                           CREATED DATE
                         </span>
                         <span className="detail-meta-val">
-                          {new Date(selectedMobileGuest.created_at).toLocaleString("en-US", {
+                          {new Date(selectedGuest.created_at).toLocaleString("en-US", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -1648,7 +1690,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Personalized Link Box */}
-                  <div className="mobile-card-section">
+                  <div className="drawer-card-section">
                     <div className="section-title-wrap">
                       <Link2 size={14} className="section-title-icon" />
                       <span className="detail-section-title">
@@ -1656,21 +1698,21 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
-                    <div className="mobile-slug-preview-box">
+                    <div className="drawer-slug-preview-box">
                       <span className="slug-preview-prefix">/invite/</span>
                       <span className="slug-preview-name">
-                        {selectedMobileGuest.invitation_slug || "(no-slug)"}
+                        {selectedGuest.invitation_slug || "(no-slug)"}
                       </span>
                     </div>
 
-                    <div className="mobile-link-btns-row">
+                    <div className="drawer-link-btns-row">
                       <button
                         type="button"
-                        className={`mobile-sheet-link-btn copy ${copiedId === selectedMobileGuest.id ? "is-copied" : ""}`}
-                        onClick={() => handleCopyLink(selectedMobileGuest)}
-                        disabled={!selectedMobileGuest.invitation_slug}
+                        className={`drawer-link-btn copy ${copiedId === selectedGuest.id ? "is-copied" : ""}`}
+                        onClick={() => handleCopyLink(selectedGuest)}
+                        disabled={!selectedGuest.invitation_slug}
                       >
-                        {copiedId === selectedMobileGuest.id ? (
+                        {copiedId === selectedGuest.id ? (
                           <>
                             <Check size={16} />
                             <span>COPIED!</span>
@@ -1683,12 +1725,12 @@ export default function AdminDashboard() {
                         )}
                       </button>
 
-                      {selectedMobileGuest.invitation_slug && (
+                      {selectedGuest.invitation_slug && (
                         <a
-                          href={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${encodeURIComponent(selectedMobileGuest.invitation_slug)}`}
+                          href={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${encodeURIComponent(selectedGuest.invitation_slug)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mobile-sheet-link-btn open"
+                          className="drawer-link-btn open"
                         >
                           <ExternalLink size={16} />
                           <span>OPEN INVITATION</span>
@@ -1698,21 +1740,21 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Message & Blessings Box */}
-                  <div className="mobile-card-section">
+                  <div className="drawer-card-section">
                     <div className="section-title-wrap">
                       <MessageSquare size={14} className="section-title-icon" />
                       <span className="detail-section-title">
                         RSVP MESSAGE &bull; សារជូនពរ
                       </span>
                     </div>
-                    {selectedMobileGuest.rsvp_message ? (
-                      <div className="mobile-message-quote font-khmer">
+                    {selectedGuest.rsvp_message ? (
+                      <div className="drawer-message-quote font-khmer">
                         <p className="quote-text">
-                          &ldquo;{selectedMobileGuest.rsvp_message}&rdquo;
+                          &ldquo;{selectedGuest.rsvp_message}&rdquo;
                         </p>
                       </div>
                     ) : (
-                      <div className="mobile-no-message">
+                      <div className="drawer-no-message">
                         <span>មិនទាន់មានសារជូនពរនៅឡើយទេ (No message submitted yet)</span>
                       </div>
                     )}
@@ -1722,12 +1764,12 @@ export default function AdminDashboard() {
             </div>
 
             {/* Bottom Action Footer */}
-            {editingGuest !== selectedMobileGuest.id && (
-              <div className="mobile-sheet-footer">
+            {editingGuest !== selectedGuest.id && (
+              <div className="drawer-panel-footer">
                 <button
                   type="button"
-                  className="mobile-sheet-footer-btn edit"
-                  onClick={() => handleStartEdit(selectedMobileGuest)}
+                  className="drawer-footer-btn edit"
+                  onClick={() => handleStartEdit(selectedGuest)}
                 >
                   <Edit2 size={16} />
                   <span>EDIT GUEST</span>
@@ -1735,10 +1777,10 @@ export default function AdminDashboard() {
 
                 <button
                   type="button"
-                  className="mobile-sheet-footer-btn delete"
+                  className="drawer-footer-btn delete"
                   onClick={() => {
-                    const target = selectedMobileGuest;
-                    setSelectedMobileGuest(null);
+                    const target = selectedGuest;
+                    setSelectedGuest(null);
                     handleDeleteGuest(target);
                   }}
                 >
