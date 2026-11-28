@@ -5482,10 +5482,11 @@ button {
 }
 
 .add-guest-title {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   color: var(--color-burgundy);
   margin: 0;
-  line-height: 1.25;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .add-guest-subtitle {

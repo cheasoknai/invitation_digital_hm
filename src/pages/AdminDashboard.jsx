@@ -846,17 +846,14 @@ export default function AdminDashboard() {
                 <UserPlus size={20} />
               </div>
               <div>
-                <h2 className="add-guest-title font-khmer-moul">
+                <h2 className="add-guest-title font-khmer">
                   បន្ថែមភ្ញៀវកិត្តិយសថ្មី
                 </h2>
-                <p className="add-guest-subtitle font-serif">
-                  INVITATION GENERATOR &bull; CREATES INSTANT READABLE SLUG
-                </p>
               </div>
             </div>
             <p className="add-guest-hint font-khmer">
-              បញ្ចូលឈ្មោះអង់គ្លេស ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់
-              <code className="hint-slug-code">/invite/guestname</code>
+              បញ្ចូលឈ្មោះភ្ញៀវ ប្រព័ន្ធនឹងបង្កើតតំណភ្ជាប់{" "}
+              <code className="hint-slug-code">/invite/guestname</code>{" "}
               ជូនដោយស្វ័យប្រវត្តិ។
             </p>
           </div>
@@ -907,12 +904,12 @@ export default function AdminDashboard() {
               {isAdding ? (
                 <>
                   <Loader2 size={16} className="spinner-icon" />
-                  <span>ADDING GUEST...</span>
+                  <span>កំពុងបន្ថែម...</span>
                 </>
               ) : (
                 <>
                   <UserPlus size={16} />
-                  <span>បន្ថែមភ្ញៀវ &bull; ADD GUEST</span>
+                  <span>បន្ថែមភ្ញៀវ</span>
                 </>
               )}
             </button>
