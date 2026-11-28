@@ -705,7 +705,7 @@ export default function AdminDashboard() {
             </div>
             <div className="admin-brand-text">
               <h1 className="admin-topbar-title font-serif">
-                H&amp;M &bull; GUEST MANAGEMENT
+                GUEST MANAGEMENT
               </h1>
               <p className="admin-topbar-khmer font-khmer">
                 ប្រព័ន្ធគ្រប់គ្រងបញ្ជីភ្ញៀវកិត្តិយស
